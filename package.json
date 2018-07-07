@@ -1,0 +1,54 @@
+{
+	"name": "pxls",
+	"version": "1.0.0",
+	"description": "A module for interacting with the api for pxls.space",
+	"keywords": [
+		"pxls",
+		"api"
+	],
+	"homepage": "",
+	"bugs": "",
+	"license": "MIT",
+	"author": {
+		"name": "Blank Parenthesis",
+		"email": "blank.parenthesis@gmail.com",
+		"url": "https://thevoid.cc"
+	},
+	"contributors": [],
+	"maintainers": [
+		{
+			"name": "Blank Parenthesis",
+			"email": "blank.parenthesis@gmail.com",
+			"url": "https://thevoid.cc"
+		}
+	],
+	"main": "lib",
+	"directories": {
+		"lib": "lib",
+		"test": "test"
+	},
+	"scripts": {
+		"test": "mocha test/pxls.test.js",
+		"progress": "mocha test/pxls.test.js --reporter dot",
+		"lint": "eslint **/*.mjs ; exit 0"
+	},
+	"repository": {
+		"type": "git",
+		"url": ""
+	},
+	"dependencies": {
+		"got": "^8.0.0",
+		"pngjs": "^3.0.0",
+		"should": "^13.0.0",
+		"color-parse": "^1.0.0",
+		"ws": "^5.0.0"
+	},
+	"devDependencies": {
+		"mocha": "^5.0.0",
+		"eslint": ">4.0.0"
+	},
+	"engines": {
+		"node": ">=10.0.0"
+	},
+	"private": true
+}
