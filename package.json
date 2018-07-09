@@ -30,7 +30,7 @@
 	"scripts": {
 		"test": "mocha test/pxls.test.js",
 		"progress": "mocha test/pxls.test.js --reporter dot",
-		"lint": "eslint **/*.mjs ; exit 0"
+		"lint": "eslint . ; exit 0"
 	},
 	"repository": {
 		"type": "git",
