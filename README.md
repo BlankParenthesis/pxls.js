@@ -12,18 +12,6 @@ const pxls = new Pxls("pxls.space");
 pxls.on("pixel", console.log);
 pxls.connect();
 ```
-Looking up pixels:
-```javascript
-const Pxls = require("pxls");
-
-const pxls = new Pxls("pxls.space");
-pxls.connect().then(() => {
-	console.log(await pxls.lookup(10, 40));
-
-	// wait for rate-limiting if needed
-	console.log(await pxls.eventuallyLookup(10, 40));
-});
-```
 Save a snapshot of the canvas:
 ```javascript
 const Pxls = require("pxls");
