@@ -16,7 +16,7 @@ const wait = (t: number) => new Promise(r => setTimeout(r, t));
 
 class PxlsColor {
 	public readonly name: string;
-	public readonly value: [number, number, number];
+	public readonly values: [number, number, number];
 
 	constructor(object: unknown) {
 		if(!isObject(object)) 
@@ -31,7 +31,7 @@ class PxlsColor {
 			throw new Error("Invalid color: expected value to be a string");
 
 		this.name = object.name;
-		this.value = color(`#${object.value}`).values;
+		this.values = color(`#${object.value}`).values;
 	}
 }
 
@@ -396,7 +396,7 @@ class Pxls extends EventEmitter {
 		rgba.fill(255);
 
 		for(let i = 0; i < buffer.length; i++) {
-			rgba.set(palette[buffer[i]].value, i << 2);
+			rgba.set(palette[buffer[i]].values, i << 2);
 		}
 		return rgba;
 	}
