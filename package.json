@@ -21,6 +21,7 @@
 		}
 	],
 	"main": "lib",
+	"types": "types",
 	"directories": {
 		"lib": "lib"
 	},

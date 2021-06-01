@@ -101,7 +101,7 @@ class Pxls extends EventEmitter {
 	}
 
 	// setup the websocket
-	async connectWS(): Promise<void> {
+	private async connectWS(): Promise<void> {
 		if(typeof this.wsVariable !== "undefined") {
 			if(![WebSocket.CLOSING, WebSocket.CLOSED].includes(this.wsVariable.readyState as any)) {
 				throw new Error("Cannot connect new websocket: already connected");
@@ -178,7 +178,7 @@ class Pxls extends EventEmitter {
 		this.ws.close();
 	}
 
-	setMetadata(
+	private setMetadata(
 		width: number, 
 		height: number, 
 		palette: unknown[], 
@@ -206,7 +206,7 @@ class Pxls extends EventEmitter {
 		this.heatmapdata = new Uint8Array(width * height);
 	}
 
-	setupListeners() {
+	private setupListeners() {
 		this.on("pixel", p => {
 			if(p.color !== -1) {
 				try {

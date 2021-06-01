@@ -9,9 +9,11 @@
 		"allowJs": false,
 		"strict": true,
 		"strictPropertyInitialization": false,
-		"outDir": "./lib"
+		"outDir": "./lib",
+		"declaration": true,
+		"declarationDir": "./types"
 	},
-	"files": ["src/index.ts", "src/index.d.ts"],
+	"files": ["src/index.ts", "src/color-parse.d.ts"],
 	"exclude": [
 		"node_modules"
 	]
