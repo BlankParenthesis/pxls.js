@@ -75,6 +75,8 @@ class Pxls extends EventEmitter {
 	private canvasdata?: Uint8Array;
 	private heatmapdata?: Uint8Array;
 
+	private heartbeatTimeout?: NodeJS.Timeout;
+
 	constructor(site: string = "pxls.space") {
 		super();
 
@@ -136,6 +138,14 @@ class Pxls extends EventEmitter {
 						}
 						break;
 					case "users":
+						if(typeof this.heartbeatTimeout !== "undefined") {
+							clearTimeout(this.heartbeatTimeout);
+						}
+						// Pxls sends this packet at least once every 10 minutes.
+						// If we don't get one for at least 11 minutes, the
+						// connection is dead.
+						this.heartbeatTimeout = setTimeout(reload, 660000);
+
 						if(!UsersMessage.validate(message)) 
 							throw new Error(`UsersMessage failed to validate: ${message}`);
 						this.emit("users", message.count);
