@@ -66,6 +66,10 @@ declare interface Pxls {
 	emit(event: "sync", data: SyncData): boolean;
 }
 
+interface PxlsOptions {
+	site?: string;
+}
+
 class Pxls extends EventEmitter {
 	readonly site: string;
 	private synced = false;
@@ -82,10 +86,26 @@ class Pxls extends EventEmitter {
 
 	private heartbeatTimeout?: NodeJS.Timeout;
 
-	constructor(site: string = "pxls.space") {
+	constructor(optionsOrSite?: string | PxlsOptions) {
 		super();
 
-		this.site = site;
+		const options = {
+			"site": "pxls.space"
+		};
+
+		if(typeof optionsOrSite === "object") {
+			for(const [key, value] of Object.entries(optionsOrSite)) {
+				if(hasProperty(optionsOrSite, key) && hasProperty(options, key)) {
+					options[key] = value;
+				}
+			}
+		} else if(typeof optionsOrSite === "string") {
+			options.site = optionsOrSite;
+		} else if(typeof optionsOrSite !== "undefined") {
+			throw new Error(`Invalid construction option: ${optionsOrSite}`);
+		}
+
+		this.site = options.site;
 	}
 
 	get ws(): WebSocket {

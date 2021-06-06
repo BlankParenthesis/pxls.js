@@ -39,6 +39,9 @@ declare interface Pxls {
     emit(event: "users", users: number): boolean;
     emit(event: "sync", data: SyncData): boolean;
 }
+interface PxlsOptions {
+    site?: string;
+}
 declare class Pxls extends EventEmitter {
     readonly site: string;
     private synced;
@@ -50,7 +53,7 @@ declare class Pxls extends EventEmitter {
     private placemapdata?;
     private virginmapdata?;
     private heartbeatTimeout?;
-    constructor(site?: string);
+    constructor(optionsOrSite?: string | PxlsOptions);
     get ws(): WebSocket;
     connect(): Promise<Uint8Array>;
     private connectWS;
