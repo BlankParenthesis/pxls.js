@@ -46,28 +46,36 @@ interface Metadata {
 
 interface SyncData {
 	metadata: Metadata;
-	canvas: Uint8Array;
-	heatmap: Uint8Array;
-	placemap: Uint8Array;
-	virginmap: Uint8Array;
+	canvas?: Uint8Array;
+	heatmap?: Uint8Array;
+	placemap?: Uint8Array;
+	virginmap?: Uint8Array;
 }
 
 declare interface Pxls {
 	on(event: "ready", listener: () => void): this;
 	on(event: "disconnect", listener: () => void): this;
-	on(event: "pixel", listener: (pixel: Pixel & { oldColor: number }) => void): this;
+	on(event: "pixel", listener: (pixel: Pixel & { oldColor?: number }) => void): this;
 	on(event: "users", listener: (users: number) => void): this;
 	on(event: "sync", listener: (data: SyncData) => void): this;
 	
 	emit(event: "ready"): boolean;
 	emit(event: "disconnect"): boolean;
-	emit(event: "pixel", pixel: Pixel & { oldColor: number }): boolean;
+	emit(event: "pixel", pixel: Pixel & { oldColor?: number }): boolean;
 	emit(event: "users", users: number): boolean;
 	emit(event: "sync", data: SyncData): boolean;
 }
 
+enum BufferType {
+	CANVAS = 0,
+	HEATMAP = 1,
+	PLACEMAP = 2,
+	VIRGINMAP = 3,
+}
+
 interface PxlsOptions {
 	site?: string;
+	buffers?: ArrayLike<BufferType>;
 }
 
 class Pxls extends EventEmitter {
@@ -78,7 +86,7 @@ class Pxls extends EventEmitter {
 	private metadata?: Metadata;
 	private userCount?: number;
 
-	// TODO: A construct option to restrict which buffers are stored
+	private readonly bufferRestriction: Set<BufferType>;
 	private canvasdata?: Uint8Array;
 	private heatmapdata?: Uint8Array;
 	private placemapdata?: Uint8Array;
@@ -90,7 +98,13 @@ class Pxls extends EventEmitter {
 		super();
 
 		const options = {
-			"site": "pxls.space"
+			"site": "pxls.space",
+			"buffers": [
+				BufferType.CANVAS,
+				BufferType.HEATMAP,
+				BufferType.PLACEMAP,
+				BufferType.VIRGINMAP,
+			],
 		};
 
 		if(typeof optionsOrSite === "object") {
@@ -106,6 +120,7 @@ class Pxls extends EventEmitter {
 		}
 
 		this.site = options.site;
+		this.bufferRestriction = new Set(options.buffers);
 	}
 
 	get ws(): WebSocket {
@@ -122,7 +137,6 @@ class Pxls extends EventEmitter {
 		await this.sync();
 		this.setupListeners();
 		this.emit("ready");
-		return this.canvas;
 	}
 
 	// setup the websocket
@@ -155,10 +169,14 @@ class Pxls extends EventEmitter {
 							throw new Error(`PixelMessage failed to validate: ${message}`);
 						if(this.synced) {
 							for(const pixel of message.pixels) {
-								this.emit("pixel", {
-									...pixel,
-									"oldColor": this.canvas[this.address(pixel.x, pixel.y)]
-								});
+								if(this.bufferRestriction.has(BufferType.CANVAS)) {
+									this.emit("pixel", {
+										...pixel,
+										"oldColor": this.canvas[this.address(pixel.x, pixel.y)]
+									});
+								} else {
+									this.emit("pixel", pixel);
+								}
 							}
 						}
 						break;
@@ -226,11 +244,6 @@ class Pxls extends EventEmitter {
 			"maxStacked": maxStacked,
 			"canvasCode": canvasCode,
 		};
-
-		this.canvasdata = new Uint8Array(width * height);
-		this.heatmapdata = new Uint8Array(width * height);
-		this.placemapdata = new Uint8Array(width * height);
-		this.virginmapdata = new Uint8Array(width * height);
 	}
 
 	private setupListeners() {
@@ -245,9 +258,15 @@ class Pxls extends EventEmitter {
 			
 			const address = this.address(p.x, p.y);
 
-			this.canvas[address] = p.color;
-			this.heatmap[address] = 255;
-			this.virginmap[address] = 0;
+			if(this.bufferRestriction.has(BufferType.CANVAS)) {
+				this.canvas[address] = p.color;
+			}
+			if(this.bufferRestriction.has(BufferType.HEATMAP)) {
+				this.heatmap[address] = 255;
+			}
+			if(this.bufferRestriction.has(BufferType.VIRGINMAP)) {
+				this.virginmap[address] = 0;
+			}
 		});
 		this.on("users", u => {
 			this.userCount = u;
@@ -267,13 +286,15 @@ class Pxls extends EventEmitter {
 		});
 
 		setInterval(() => {
-			this.heatmapdata = this.heatmap.map(b => {
-				if(b > 0) {
-					return b - 1;
-				} else {
-					return b;
-				}
-			});
+			if(this.bufferRestriction.has(BufferType.HEATMAP)) {
+				this.heatmapdata = this.heatmap.map(b => {
+					if(b > 0) {
+						return b - 1;
+					} else {
+						return b;
+					}
+				});
+			}
 		}, this.heatmapCooldown * 1000 / 256);
 	}
 
@@ -292,19 +313,46 @@ class Pxls extends EventEmitter {
 		});
 	}
 
+	private get bufferSources() {
+		return new Map([
+			[BufferType.CANVAS, `https://${this.site}/boarddata`],
+			[BufferType.HEATMAP, `https://${this.site}/heatmap`],
+			[BufferType.PLACEMAP, `https://${this.site}/placemap`],
+			[BufferType.VIRGINMAP, `https://${this.site}/virginmap`],
+		]);
+	}
+
 	async sync() {
 		const metadata = (await got(`https://${this.site}/info`, { "json": true })).body;
 
 		const { width, height, palette, heatmapCooldown, maxStacked, canvasCode } = metadata;
 		this.setMetadata(width, height, palette, heatmapCooldown, maxStacked, canvasCode);
 
-		const [heatmap, canvas, placemap, virginmap] = await Promise.all([
-			this.pipe(got.stream(`https://${this.site}/heatmap`), this.heatmap),
-			this.pipe(got.stream(`https://${this.site}/boarddata`), this.canvas),
-			this.pipe(got.stream(`https://${this.site}/placemap`), this.placemap),
-			this.pipe(got.stream(`https://${this.site}/virginmap`), this.virginmap),
-		]);
-		this.emit("sync", { metadata, canvas, heatmap, placemap, virginmap });
+		const bufferSources = [...this.bufferSources.entries()]
+			.filter(([type, _]) => this.bufferRestriction.has(type));
+
+		const buffers = await Promise.all(
+			bufferSources.map(async ([type, url]): Promise<[string, Uint8Array]> => {
+				const buffer = await this.pipe(got.stream(url), new Uint8Array(width * height));
+
+				switch(type) {
+				case BufferType.CANVAS:
+					return ["canvas", this.canvasdata = buffer];
+				case BufferType.HEATMAP:
+					return ["canvas", this.heatmapdata = buffer];
+				case BufferType.PLACEMAP:
+					return ["canvas", this.placemapdata = buffer];
+				case BufferType.VIRGINMAP:
+					return ["canvas", this.virginmapdata = buffer];
+				default:
+					throw new Error("Unknown buffer type used internally");
+				}
+			})
+		);
+
+		const buffersSyncdata = Object.fromEntries(buffers);
+
+		this.emit("sync", { metadata, ...buffersSyncdata });
 		this.synced = true;
 	}
 
@@ -417,25 +465,25 @@ class Pxls extends EventEmitter {
 		return this.metadata.canvasCode;
 	}
 
-	get canvas(): Uint8Array {
+	get canvas() {
 		if(typeof this.canvasdata === "undefined")
 			throw new Error("Missing canvas data");
 		return this.canvasdata;
 	}
 	
-	get heatmap(): Uint8Array {
+	get heatmap() {
 		if(typeof this.heatmapdata === "undefined")
 			throw new Error("Missing heatmap data");
 		return this.heatmapdata;
 	}
 
-	get virginmap(): Uint8Array {
+	get virginmap() {
 		if(typeof this.virginmapdata === "undefined")
 			throw new Error("Missing virginmap data");
 		return this.virginmapdata;
 	}
 	
-	get placemap(): Uint8Array {
+	get placemap() {
 		if(typeof this.placemapdata === "undefined")
 			throw new Error("Missing placemap data");
 		return this.placemapdata;

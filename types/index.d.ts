@@ -18,29 +18,36 @@ interface Metadata {
 }
 interface SyncData {
     metadata: Metadata;
-    canvas: Uint8Array;
-    heatmap: Uint8Array;
-    placemap: Uint8Array;
-    virginmap: Uint8Array;
+    canvas?: Uint8Array;
+    heatmap?: Uint8Array;
+    placemap?: Uint8Array;
+    virginmap?: Uint8Array;
 }
 declare interface Pxls {
     on(event: "ready", listener: () => void): this;
     on(event: "disconnect", listener: () => void): this;
     on(event: "pixel", listener: (pixel: Pixel & {
-        oldColor: number;
+        oldColor?: number;
     }) => void): this;
     on(event: "users", listener: (users: number) => void): this;
     on(event: "sync", listener: (data: SyncData) => void): this;
     emit(event: "ready"): boolean;
     emit(event: "disconnect"): boolean;
     emit(event: "pixel", pixel: Pixel & {
-        oldColor: number;
+        oldColor?: number;
     }): boolean;
     emit(event: "users", users: number): boolean;
     emit(event: "sync", data: SyncData): boolean;
 }
+declare enum BufferType {
+    CANVAS = 0,
+    HEATMAP = 1,
+    PLACEMAP = 2,
+    VIRGINMAP = 3
+}
 interface PxlsOptions {
     site?: string;
+    buffers?: ArrayLike<BufferType>;
 }
 declare class Pxls extends EventEmitter {
     readonly site: string;
@@ -48,6 +55,7 @@ declare class Pxls extends EventEmitter {
     private wsVariable?;
     private metadata?;
     private userCount?;
+    private readonly bufferRestriction;
     private canvasdata?;
     private heatmapdata?;
     private placemapdata?;
@@ -55,13 +63,14 @@ declare class Pxls extends EventEmitter {
     private heartbeatTimeout?;
     constructor(optionsOrSite?: string | PxlsOptions);
     get ws(): WebSocket;
-    connect(): Promise<Uint8Array>;
+    connect(): Promise<void>;
     private connectWS;
     restartWS(): Promise<void>;
     closeWS(): Promise<void>;
     private setMetadata;
     private setupListeners;
     private pipe;
+    private get bufferSources();
     sync(): Promise<void>;
     private static savePng;
     /**
