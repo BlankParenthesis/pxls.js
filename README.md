@@ -6,21 +6,23 @@ Examples
 --------
 Listening to all pixel placements:
 ```javascript
-const pxls = require("pxls");
+const Pxls = require("pxls");
 
 const pxls = new Pxls("pxls.space");
 pxls.on("pixel", console.log);
 pxls.connect();
 ```
+
 Save a snapshot of the canvas:
 ```javascript
 const Pxls = require("pxls");
 
 const pxls = new Pxls("pxls.space");
 pxls.connect().then(() => {
-	pxls.save("snapshot.png");
+	pxls.saveCanvas("snapshot.png");
 });
 ```
+
 Getting the online user count:
 ```javascript
 const Pxls = require("pxls");
