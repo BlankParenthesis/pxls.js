@@ -20,6 +20,8 @@ interface SyncData {
     metadata: Metadata;
     canvas: Uint8Array;
     heatmap: Uint8Array;
+    placemap: Uint8Array;
+    virginmap: Uint8Array;
 }
 declare interface Pxls {
     on(event: "ready", listener: () => void): this;
@@ -45,6 +47,8 @@ declare class Pxls extends EventEmitter {
     private userCount?;
     private canvasdata?;
     private heatmapdata?;
+    private placemapdata?;
+    private virginmapdata?;
     private heartbeatTimeout?;
     constructor(site?: string);
     get ws(): WebSocket;
@@ -56,10 +60,20 @@ declare class Pxls extends EventEmitter {
     private setupListeners;
     private pipe;
     sync(): Promise<void>;
-    save(file: string): Promise<unknown>;
-    saveHeatmap(file: string): Promise<unknown>;
+    private static savePng;
+    /**
+     * @alias saveCanvas
+     */
+    save(file: string): Promise<void>;
+    saveCanvas(file: string): Promise<void>;
+    saveHeatmap(file: string): Promise<void>;
+    savePlacemap(file: string): Promise<void>;
+    saveVirginmap(file: string): Promise<void>;
+    private static pngFromGrayscaleBuffer;
     get png(): PNG;
     get heatmapPng(): PNG;
+    get placemapPng(): PNG;
+    get virginmapPng(): PNG;
     address(x: number, y: number): number;
     get users(): number;
     get width(): number;
@@ -70,7 +84,16 @@ declare class Pxls extends EventEmitter {
     get canvasCode(): string;
     get canvas(): Uint8Array;
     get heatmap(): Uint8Array;
+    get virginmap(): Uint8Array;
+    get placemap(): Uint8Array;
     private cropBuffer;
+    cropCanvas(x: number, y: number, width: number, height: number): Uint8Array;
+    cropHeatmap(x: number, y: number, width: number, height: number): Uint8Array;
+    cropPlacemap(x: number, y: number, width: number, height: number): Uint8Array;
+    cropVirginmap(x: number, y: number, width: number, height: number): Uint8Array;
+    /**
+     * @deprecated use `cropCanvas` instead
+     */
     getCroppedCanvas(x: number, y: number, width: number, height: number): Uint8Array;
     private convertBufferToRGBA;
     get rgba(): Uint8Array;

@@ -48,6 +48,8 @@ interface SyncData {
 	metadata: Metadata;
 	canvas: Uint8Array;
 	heatmap: Uint8Array;
+	placemap: Uint8Array;
+	virginmap: Uint8Array;
 }
 
 declare interface Pxls {
@@ -72,8 +74,11 @@ class Pxls extends EventEmitter {
 	private metadata?: Metadata;
 	private userCount?: number;
 
+	// TODO: A construct option to restrict which buffers are stored
 	private canvasdata?: Uint8Array;
 	private heatmapdata?: Uint8Array;
+	private placemapdata?: Uint8Array;
+	private virginmapdata?: Uint8Array;
 
 	private heartbeatTimeout?: NodeJS.Timeout;
 
@@ -204,6 +209,8 @@ class Pxls extends EventEmitter {
 
 		this.canvasdata = new Uint8Array(width * height);
 		this.heatmapdata = new Uint8Array(width * height);
+		this.placemapdata = new Uint8Array(width * height);
+		this.virginmapdata = new Uint8Array(width * height);
 	}
 
 	private setupListeners() {
@@ -215,8 +222,12 @@ class Pxls extends EventEmitter {
 					return;
 				}
 			}
-			this.canvas[this.address(p.x, p.y)] = p.color;
-			this.heatmap[this.address(p.x, p.y)] = 255;
+			
+			const address = this.address(p.x, p.y);
+
+			this.canvas[address] = p.color;
+			this.heatmap[address] = 255;
+			this.virginmap[address] = 0;
 		});
 		this.on("users", u => {
 			this.userCount = u;
@@ -267,28 +278,59 @@ class Pxls extends EventEmitter {
 		const { width, height, palette, heatmapCooldown, maxStacked, canvasCode } = metadata;
 		this.setMetadata(width, height, palette, heatmapCooldown, maxStacked, canvasCode);
 
-		const [heatmap, canvas] = await Promise.all([
+		const [heatmap, canvas, placemap, virginmap] = await Promise.all([
 			this.pipe(got.stream(`https://${this.site}/heatmap`), this.heatmap),
-			this.pipe(got.stream(`https://${this.site}/boarddata`), this.canvas)
+			this.pipe(got.stream(`https://${this.site}/boarddata`), this.canvas),
+			this.pipe(got.stream(`https://${this.site}/placemap`), this.placemap),
+			this.pipe(got.stream(`https://${this.site}/virginmap`), this.virginmap),
 		]);
-		this.emit("sync", { metadata, canvas, heatmap });
+		this.emit("sync", { metadata, canvas, heatmap, placemap, virginmap });
 		this.synced = true;
 	}
 
-	async save(file: string) {
+	private static async savePng(file: string, png: PNG) {
 		return await new Promise((resolve, reject) => {
-			this.png.pipe(fs.createWriteStream(file))
+			png.pipe(fs.createWriteStream(file))
 				.once("finish", resolve)
 				.once("error", reject);
 		});
 	}
 
+	/**
+	 * @alias saveCanvas
+	 */
+	async save(file: string) {
+		await this.saveCanvas(file);
+	}
+	
+	async saveCanvas(file: string) {
+		await Pxls.savePng(file, this.png);
+	}
+
 	async saveHeatmap(file: string) {
-		return await new Promise((resolve, reject) => {
-			this.heatmapPng.pipe(fs.createWriteStream(file))
-				.once("finish", resolve)
-				.once("error", reject);
-		});
+		await Pxls.savePng(file, this.heatmapPng);
+	}
+
+	async savePlacemap(file: string) {
+		await Pxls.savePng(file, this.placemapPng);
+	}
+
+	async saveVirginmap(file: string) {
+		await Pxls.savePng(file, this.virginmapPng);
+	}
+
+	private static pngFromGrayscaleBuffer(buffer: Uint8Array, width: number, height: number) {
+		if(buffer.length !== width * height)
+			throw new Error("Incompatible buffer sizes given");
+
+		// 0 is grayscale, no alpha.
+		const colorType = 0;
+		const inputColorType = 0;
+
+		const image = new PNG({ width, height, colorType, inputColorType });
+
+		image.data.set(buffer);
+		return image.pack();
 	}
 
 	get png() {
@@ -298,17 +340,15 @@ class Pxls extends EventEmitter {
 	}
 
 	get heatmapPng() {
-		const image = new PNG({ "width": this.width, "height": this.height });
-		const rgba = new Uint8Array((this.width * this.height) << 2);
-		const { heatmap } = this;
-		rgba.fill(255);
+		return Pxls.pngFromGrayscaleBuffer(this.heatmap, this.width, this.height);
+	}
 
-		for(let i = 0; i < heatmap.length; i++) {
-			rgba.set((new Array(3)).fill(heatmap[i]), i << 2);
-		}
+	get placemapPng() {
+		return Pxls.pngFromGrayscaleBuffer(this.placemap.map(v => v === 0 ? 0 : 255), this.width, this.height);
+	}
 
-		image.data.set(rgba);
-		return image.pack();
+	get virginmapPng() {
+		return Pxls.pngFromGrayscaleBuffer(this.virginmap, this.width, this.height);
 	}
 
 	address(x: number, y: number) {
@@ -369,6 +409,18 @@ class Pxls extends EventEmitter {
 		return this.heatmapdata;
 	}
 
+	get virginmap(): Uint8Array {
+		if(typeof this.virginmapdata === "undefined")
+			throw new Error("Missing virginmap data");
+		return this.virginmapdata;
+	}
+	
+	get placemap(): Uint8Array {
+		if(typeof this.placemapdata === "undefined")
+			throw new Error("Missing placemap data");
+		return this.placemapdata;
+	}
+
 	private cropBuffer(
 		buffer: Uint8Array, 
 		bufferWidth: number, 
@@ -395,8 +447,27 @@ class Pxls extends EventEmitter {
 		return croppedBuffer;
 	}
 
-	getCroppedCanvas(x: number, y: number, width: number, height: number) {
+	cropCanvas(x: number, y: number, width: number, height: number) {
 		return this.cropBuffer(this.canvas, this.width, this.height, x, y, width, height);
+	}
+
+	cropHeatmap(x: number, y: number, width: number, height: number) {
+		return this.cropBuffer(this.heatmap, this.width, this.height, x, y, width, height);
+	}
+
+	cropPlacemap(x: number, y: number, width: number, height: number) {
+		return this.cropBuffer(this.placemap, this.width, this.height, x, y, width, height);
+	}
+
+	cropVirginmap(x: number, y: number, width: number, height: number) {
+		return this.cropBuffer(this.virginmap, this.width, this.height, x, y, width, height);
+	}
+
+	/**
+	 * @deprecated use `cropCanvas` instead
+	 */
+	getCroppedCanvas(x: number, y: number, width: number, height: number) {
+		return this.cropCanvas(x, y, width, height);
 	}
 
 	private convertBufferToRGBA(buffer: Uint8Array) {
