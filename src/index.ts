@@ -526,9 +526,8 @@ export class Pxls extends EventEmitter {
 		return this.cropCanvas(x, y, width, height);
 	}
 
-	private convertBufferToRGBA(buffer: Uint8Array) {
-		const rgba = new Uint8Array((this.width * this.height) << 2);
-		const { palette } = this;
+	static convertBufferToRGBA(buffer: Uint8Array, palette: PxlsColor[]) {
+		const rgba = new Uint8Array(buffer.length << 2);
 
 		rgba.fill(255);
 
@@ -539,7 +538,7 @@ export class Pxls extends EventEmitter {
 	}
 
 	get rgba() {
-		return this.convertBufferToRGBA(this.canvas);
+		return Pxls.convertBufferToRGBA(this.canvas, this.palette);
 	}
 }
 
