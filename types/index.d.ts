@@ -2,13 +2,14 @@
 import * as EventEmitter from "events";
 import * as WebSocket from "ws";
 import { PNG } from "pngjs";
-import { Pixel } from "./messages";
-declare class PxlsColor {
+import { Message, Pixel, PixelsMessage, UsersMessage } from "./messages";
+export { Message, Pixel, PixelsMessage, UsersMessage };
+export declare class PxlsColor {
     readonly name: string;
     readonly values: [number, number, number];
     constructor(object: unknown);
 }
-interface Metadata {
+export interface Metadata {
     width: number;
     height: number;
     palette: PxlsColor[];
@@ -16,14 +17,14 @@ interface Metadata {
     maxStacked: number;
     canvasCode: string;
 }
-interface SyncData {
+export interface SyncData {
     metadata: Metadata;
     canvas?: Uint8Array;
     heatmap?: Uint8Array;
     placemap?: Uint8Array;
     virginmap?: Uint8Array;
 }
-declare interface Pxls {
+export interface Pxls {
     on(event: "ready", listener: () => void): this;
     on(event: "disconnect", listener: () => void): this;
     on(event: "pixel", listener: (pixel: Pixel & {
@@ -39,17 +40,17 @@ declare interface Pxls {
     emit(event: "users", users: number): boolean;
     emit(event: "sync", data: SyncData): boolean;
 }
-declare enum BufferType {
+export declare enum BufferType {
     CANVAS = 0,
     HEATMAP = 1,
     PLACEMAP = 2,
     VIRGINMAP = 3
 }
-interface PxlsOptions {
+export interface PxlsOptions {
     site?: string;
     buffers?: ArrayLike<BufferType>;
 }
-declare class Pxls extends EventEmitter {
+export declare class Pxls extends EventEmitter {
     readonly site: string;
     private synced;
     private wsVariable?;
@@ -110,4 +111,4 @@ declare class Pxls extends EventEmitter {
     private convertBufferToRGBA;
     get rgba(): Uint8Array;
 }
-export = Pxls;
+export default Pxls;

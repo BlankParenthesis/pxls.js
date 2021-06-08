@@ -14,7 +14,9 @@ import { isObject, hasProperty } from "./util";
 
 const wait = (t: number) => new Promise(r => setTimeout(r, t));
 
-class PxlsColor {
+export { Message, Pixel, PixelsMessage, UsersMessage };
+
+export class PxlsColor {
 	public readonly name: string;
 	public readonly values: [number, number, number];
 
@@ -35,7 +37,7 @@ class PxlsColor {
 	}
 }
 
-interface Metadata {
+export interface Metadata {
 	width: number;
 	height: number;
 	palette: PxlsColor[];
@@ -44,7 +46,7 @@ interface Metadata {
 	canvasCode: string;
 }
 
-interface SyncData {
+export interface SyncData {
 	metadata: Metadata;
 	canvas?: Uint8Array;
 	heatmap?: Uint8Array;
@@ -52,7 +54,7 @@ interface SyncData {
 	virginmap?: Uint8Array;
 }
 
-declare interface Pxls {
+export interface Pxls {
 	on(event: "ready", listener: () => void): this;
 	on(event: "disconnect", listener: () => void): this;
 	on(event: "pixel", listener: (pixel: Pixel & { oldColor?: number }) => void): this;
@@ -66,19 +68,19 @@ declare interface Pxls {
 	emit(event: "sync", data: SyncData): boolean;
 }
 
-enum BufferType {
+export enum BufferType {
 	CANVAS = 0,
 	HEATMAP = 1,
 	PLACEMAP = 2,
 	VIRGINMAP = 3,
 }
 
-interface PxlsOptions {
+export interface PxlsOptions {
 	site?: string;
 	buffers?: ArrayLike<BufferType>;
 }
 
-class Pxls extends EventEmitter {
+export class Pxls extends EventEmitter {
 	readonly site: string;
 	private synced = false;
 	private wsVariable?: WebSocket;
@@ -123,7 +125,7 @@ class Pxls extends EventEmitter {
 		this.bufferRestriction = new Set(options.buffers);
 	}
 
-	get ws(): WebSocket {
+	private get ws(): WebSocket {
 		if(typeof this.wsVariable === "undefined") {
 			throw new Error("Expected websocket to be defined");
 		}
@@ -555,4 +557,4 @@ class Pxls extends EventEmitter {
 	}
 }
 
-export = Pxls;
+export default Pxls;
