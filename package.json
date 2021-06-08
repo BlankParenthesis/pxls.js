@@ -1,6 +1,6 @@
 {
 	"name": "pxls",
-	"version": "1.6.1",
+	"version": "1.6.2",
 	"description": "A module for interacting with the api for pxls.space",
 	"keywords": [
 		"pxls",

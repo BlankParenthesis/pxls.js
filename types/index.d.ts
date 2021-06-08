@@ -1,9 +1,9 @@
 /// <reference types="node" />
 import * as EventEmitter from "events";
-import * as WebSocket from "ws";
 import { PNG } from "pngjs";
 import { Message, Pixel, PixelsMessage, UsersMessage } from "./messages";
 export { Message, Pixel, PixelsMessage, UsersMessage };
+export declare const TRANSPARENT_PIXEL = 255;
 export declare class PxlsColor {
     readonly name: string;
     readonly values: [number, number, number];
@@ -63,7 +63,7 @@ export declare class Pxls extends EventEmitter {
     private virginmapdata?;
     private heartbeatTimeout?;
     constructor(optionsOrSite?: string | PxlsOptions);
-    get ws(): WebSocket;
+    private get ws();
     connect(): Promise<void>;
     private connectWS;
     restartWS(): Promise<void>;

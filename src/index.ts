@@ -16,6 +16,8 @@ const wait = (t: number) => new Promise(r => setTimeout(r, t));
 
 export { Message, Pixel, PixelsMessage, UsersMessage };
 
+export const TRANSPARENT_PIXEL = 255;
+
 export class PxlsColor {
 	public readonly name: string;
 	public readonly values: [number, number, number];
