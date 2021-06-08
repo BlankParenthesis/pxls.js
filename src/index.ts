@@ -1,7 +1,6 @@
 import * as should from "should";
 import * as EventEmitter from "events";
 import * as fs from "fs";
-import { Readable } from "stream";
 
 import * as got from "got";
 import color = require("color-parse");
@@ -10,7 +9,7 @@ import { PNG } from "pngjs";
 
 import { Message, Pixel, PixelsMessage, UsersMessage } from "./messages";
 
-import { isObject, hasProperty } from "./util";
+import { isObject, hasProperty, pipe } from "./util";
 
 const wait = (t: number) => new Promise(r => setTimeout(r, t));
 
@@ -302,21 +301,6 @@ export class Pxls extends EventEmitter {
 		}, this.heatmapCooldown * 1000 / 256);
 	}
 
-	private async pipe(stream: Readable, buffer: Uint8Array): Promise<Uint8Array> {
-		return await new Promise((resolve, reject) => {
-			let i = 0;
-			stream.on("data", b => {
-				buffer.set(b, i);
-				i += b.length;
-			});
-
-			stream.once("error", reject);
-			stream.once("close", reject);
-
-			stream.once("end", () => resolve(buffer));
-		});
-	}
-
 	private get bufferSources() {
 		return new Map([
 			[BufferType.CANVAS, `https://${this.site}/boarddata`],
@@ -337,7 +321,7 @@ export class Pxls extends EventEmitter {
 
 		const buffers = await Promise.all(
 			bufferSources.map(async ([type, url]): Promise<[string, Uint8Array]> => {
-				const buffer = await this.pipe(got.stream(url), new Uint8Array(width * height));
+				const buffer = await pipe(got.stream(url), new Uint8Array(width * height));
 
 				switch(type) {
 				case BufferType.CANVAS:
