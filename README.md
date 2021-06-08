@@ -6,18 +6,24 @@ Examples
 --------
 Listening to all pixel placements:
 ```javascript
-const Pxls = require("pxls");
+const { Pxls } = require("pxls");
 
-const pxls = new Pxls("pxls.space");
+const pxls = new Pxls({ 
+	site: "pxls.space", 
+	buffers: [],
+});
 pxls.on("pixel", console.log);
 pxls.connect();
 ```
 
 Save a snapshot of the canvas:
 ```javascript
-const Pxls = require("pxls");
+const { Pxls, BufferType } = require("pxls");
 
-const pxls = new Pxls("pxls.space");
+const pxls = new Pxls({ 
+	site: "pxls.space", 
+	buffers: [BufferType.CANVAS],
+});
 pxls.connect().then(() => {
 	pxls.saveCanvas("snapshot.png");
 });
@@ -25,9 +31,12 @@ pxls.connect().then(() => {
 
 Getting the online user count:
 ```javascript
-const Pxls = require("pxls");
+const { Pxls } = require("pxls");
 
-const pxls = new Pxls("pxls.space");
+const pxls = new Pxls({ 
+	site: "pxls.space", 
+	buffers: [],
+});
 pxls.connect().then(() => {
 	console.log(pxls.users);
 });
