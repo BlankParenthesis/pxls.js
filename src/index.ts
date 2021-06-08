@@ -84,6 +84,7 @@ export interface PxlsOptions {
 export class Pxls extends EventEmitter {
 	readonly site: string;
 	private synced = false;
+	private readonly pixelBuffer: Pixel[] = [];
 	private wsVariable?: WebSocket;
 
 	private metadata?: Metadata;
@@ -96,6 +97,8 @@ export class Pxls extends EventEmitter {
 	private virginmapdata?: Uint8Array;
 
 	private heartbeatTimeout?: NodeJS.Timeout;
+
+	private heatmapCooldownInterval?: NodeJS.Timeout;
 
 	constructor(optionsOrSite?: string | PxlsOptions) {
 		super();
@@ -138,8 +141,38 @@ export class Pxls extends EventEmitter {
 		this.synced = false;
 		await this.connectWS();
 		await this.sync();
-		this.setupListeners();
 		this.emit("ready");
+	}
+
+	private processPixel(pixel: Pixel) {
+		if(pixel.color !== TRANSPARENT_PIXEL) {
+			try {
+				should(this.palette[pixel.color]).not.be.undefined();
+			} catch(e) {
+				return;
+			}
+		}
+		
+		const address = this.address(pixel.x, pixel.y);
+
+		if(this.bufferRestriction.has(BufferType.HEATMAP)) {
+			this.heatmap[address] = 255;
+		}
+
+		if(this.bufferRestriction.has(BufferType.VIRGINMAP)) {
+			this.virginmap[address] = 0;
+		}
+
+		if(this.bufferRestriction.has(BufferType.CANVAS)) {
+			this.emit("pixel", {
+				...pixel,
+				"oldColor": this.canvas[address]
+			});
+
+			this.canvas[address] = pixel.color;
+		} else {
+			this.emit("pixel", pixel);
+		}
 	}
 
 	// setup the websocket
@@ -150,11 +183,28 @@ export class Pxls extends EventEmitter {
 			}
 		}
 
-		const reload = async () => {
-			this.emit("disconnect");
-		};
 		return await new Promise((resolve, reject) => {
 			const ws = this.wsVariable = new WebSocket(`wss://${this.site}/ws`);
+
+			const reload = async () => {
+				if(ws.readyState !== WebSocket.CLOSED) {
+					ws.close();
+				}
+	
+				this.emit("disconnect");
+				this.synced = false;
+
+				while(!this.synced) {
+					try {
+						await this.connectWS();
+						await this.sync();
+					} catch(e) {
+						await wait(30000);
+					}
+				}
+	
+				this.emit("ready");
+			};
 	
 			this.ws.once("open", () => {
 				ws.off("error", reject);
@@ -170,16 +220,20 @@ export class Pxls extends EventEmitter {
 					case "pixel":
 						if(!PixelsMessage.validate(message)) 
 							throw new Error(`PixelMessage failed to validate: ${message}`);
-						if(this.synced) {
-							for(const pixel of message.pixels) {
-								if(this.bufferRestriction.has(BufferType.CANVAS)) {
-									this.emit("pixel", {
-										...pixel,
-										"oldColor": this.canvas[this.address(pixel.x, pixel.y)]
-									});
-								} else {
-									this.emit("pixel", pixel);
-								}
+
+						for(const pixel of message.pixels) {
+							if(pixel.color === -1) {
+								// I'm not sure when this is -1 and when it's 255.
+								// The current pxls client indicates both as transparent.
+								// On brief inspection, I couldn't find where the server sends -1.
+								// I *know* it sends it sometimes but 🤷
+								pixel.color = TRANSPARENT_PIXEL;
+							}
+
+							if(this.synced) {
+								this.processPixel(pixel);
+							} else {
+								this.pixelBuffer.push(pixel);
 							}
 						}
 						break;
@@ -194,6 +248,9 @@ export class Pxls extends EventEmitter {
 
 						if(!UsersMessage.validate(message)) 
 							throw new Error(`UsersMessage failed to validate: ${message}`);
+
+						this.userCount = message.count;
+						
 						this.emit("users", message.count);
 						break;
 					}
@@ -213,7 +270,8 @@ export class Pxls extends EventEmitter {
 		if(this.ws.readyState === WebSocket.CLOSED) {
 			await this.connectWS();
 		} else {
-			// the restart function will be called again when the socket is fully closed
+			// the restart function will be called again when the socket is fully closed.
+			// TODO: this function should await for that to actually happen.
 			this.ws.close();
 		}
 	}
@@ -222,6 +280,9 @@ export class Pxls extends EventEmitter {
 		this.ws.removeAllListeners("error");
 		this.ws.removeAllListeners("close");
 		this.ws.close();
+		// The moment we disconnect, our data becomes potentially outdated.
+		this.synced = false;
+		// TODO: this should probably wait for the socket actually being closed if possible.
 	}
 
 	private setMetadata(
@@ -247,48 +308,12 @@ export class Pxls extends EventEmitter {
 			"maxStacked": maxStacked,
 			"canvasCode": canvasCode,
 		};
-	}
 
-	private setupListeners() {
-		this.on("pixel", p => {
-			if(p.color !== -1) {
-				try {
-					should(this.palette[p.color]).not.be.undefined();
-				} catch(e) {
-					return;
-				}
-			}
-			
-			const address = this.address(p.x, p.y);
+		if(typeof this.heatmapCooldownInterval !== "undefined") {
+			clearInterval(this.heatmapCooldownInterval);
+		}
 
-			if(this.bufferRestriction.has(BufferType.CANVAS)) {
-				this.canvas[address] = p.color;
-			}
-			if(this.bufferRestriction.has(BufferType.HEATMAP)) {
-				this.heatmap[address] = 255;
-			}
-			if(this.bufferRestriction.has(BufferType.VIRGINMAP)) {
-				this.virginmap[address] = 0;
-			}
-		});
-		this.on("users", u => {
-			this.userCount = u;
-		});
-		this.on("disconnect", async () => {
-			for(;;) {
-				try {
-					this.synced = false;
-					await this.restartWS();
-					await this.sync();
-					this.emit("ready");
-					return;
-				} catch(e) {
-					await wait(30000);
-				}
-			}
-		});
-
-		setInterval(() => {
+		this.heatmapCooldownInterval = setInterval(() => {
 			if(this.bufferRestriction.has(BufferType.HEATMAP)) {
 				this.heatmapdata = this.heatmap.map(b => {
 					if(b > 0) {
@@ -339,6 +364,10 @@ export class Pxls extends EventEmitter {
 		);
 
 		const buffersSyncdata = Object.fromEntries(buffers);
+
+		for(const pixel of this.pixelBuffer.splice(0)) {
+			this.processPixel(pixel);
+		}
 
 		this.emit("sync", { metadata, ...buffersSyncdata });
 		this.synced = true;

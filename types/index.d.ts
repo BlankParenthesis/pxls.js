@@ -53,6 +53,7 @@ export interface PxlsOptions {
 export declare class Pxls extends EventEmitter {
     readonly site: string;
     private synced;
+    private readonly pixelBuffer;
     private wsVariable?;
     private metadata?;
     private userCount?;
@@ -62,15 +63,15 @@ export declare class Pxls extends EventEmitter {
     private placemapdata?;
     private virginmapdata?;
     private heartbeatTimeout?;
+    private heatmapCooldownInterval?;
     constructor(optionsOrSite?: string | PxlsOptions);
     private get ws();
     connect(): Promise<void>;
+    private processPixel;
     private connectWS;
     restartWS(): Promise<void>;
     closeWS(): Promise<void>;
     private setMetadata;
-    private setupListeners;
-    private pipe;
     private get bufferSources();
     sync(): Promise<void>;
     private static savePng;
@@ -108,7 +109,7 @@ export declare class Pxls extends EventEmitter {
      * @deprecated use `cropCanvas` instead
      */
     getCroppedCanvas(x: number, y: number, width: number, height: number): Uint8Array;
-    private convertBufferToRGBA;
+    static convertBufferToRGBA(buffer: Uint8Array, palette: PxlsColor[]): Uint8Array;
     get rgba(): Uint8Array;
 }
 export default Pxls;
