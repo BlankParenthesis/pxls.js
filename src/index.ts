@@ -349,7 +349,10 @@ export class Pxls extends EventEmitter {
 						break;
 					}
 				});
-				ws.once("error", reload);
+				ws.once("error", e => {
+					this.emit("error", e);
+					reload();
+				});
 				ws.once("close", reload);
 				resolve();
 			});
