@@ -1,6 +1,7 @@
+import { inspect } from "util";
 import { Readable } from "stream";
 
-function isObject<
+export function isObject<
 	X extends {}
 >(
 	object: unknown
@@ -8,23 +9,23 @@ function isObject<
 	return typeof object === "object" && object !== null;
 }
 
-function isArray(
+export function isArray(
 	object: unknown
 ): object is unknown[] {
 	return Array.isArray(object);
 }
 
-function hasProperty<
+export function hasProperty<
 	X extends {}, 
 	Y extends PropertyKey
 >(
 	object: X, 
 	property: Y
 ): object is X & Record<Y, unknown> {
-	return object.hasOwnProperty(property);
+	return Object.prototype.hasOwnProperty.call(object, property);
 }
 
-async function pipe(stream: Readable, buffer: Uint8Array): Promise<Uint8Array> {
+export async function pipe(stream: Readable, buffer: Uint8Array): Promise<Uint8Array> {
 	return await new Promise((resolve, reject) => {
 		let i = 0;
 		stream.on("data", b => {
@@ -39,9 +40,12 @@ async function pipe(stream: Readable, buffer: Uint8Array): Promise<Uint8Array> {
 	});
 }
 
-export {
-	isObject,
-	isArray,
-	hasProperty,
-	pipe,
-};
+export class ValidationError extends Error {
+	readonly object;
+
+	constructor(object: unknown, objectName: string) {
+		super(`${objectName} failed to validate: ${inspect(object)}`);
+
+		this.object = object;
+	}
+}

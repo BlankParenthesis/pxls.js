@@ -1,19 +1,41 @@
-import * as should from "should";
-import * as EventEmitter from "events";
 import * as fs from "fs";
+import * as EventEmitter from "events";
+import { inspect } from "util";
 
-import * as got from "got";
+import * as should from "should";
+
+import got from "got";
 import color = require("color-parse");
 import * as WebSocket from "ws";
 import { PNG } from "pngjs";
 
-import { Message, Pixel, PixelsMessage, UsersMessage } from "./messages";
+import { 
+	Message, 
+	Pixel, 
+	PixelsMessage, 
+	UsersMessage, 
+	AlertMessage, 
+	Notification, 
+	NotificationMessage,
+	ChatMessage,
+	ChatMessageMessage,
+} from "./messages";
 
-import { isObject, hasProperty, pipe } from "./util";
+import { isObject, hasProperty, pipe, ValidationError } from "./util";
 
 const wait = (t: number) => new Promise(r => setTimeout(r, t));
 
-export { Message, Pixel, PixelsMessage, UsersMessage };
+export { 
+	Message, 
+	Pixel, 
+	PixelsMessage, 
+	UsersMessage, 
+	AlertMessage, 
+	Notification, 
+	NotificationMessage,
+	ChatMessage,
+	ChatMessageMessage,
+};
 
 export const TRANSPARENT_PIXEL = 255;
 
@@ -39,12 +61,31 @@ export class PxlsColor {
 }
 
 export interface Metadata {
+	// TODO: add metadata
 	width: number;
 	height: number;
 	palette: PxlsColor[];
 	heatmapCooldown: number;
 	maxStacked: number;
 	canvasCode: string;
+}
+
+export class Metadata {
+	static validate<M extends Metadata>(metadata: unknown): metadata is M {
+		return isObject(metadata)
+			&& hasProperty(metadata, "width")
+			&& typeof metadata.width === "number"
+			&& hasProperty(metadata, "height")
+			&& typeof metadata.height === "number"
+			&& hasProperty(metadata, "palette")
+			&& Array.isArray(metadata.palette)
+			&& hasProperty(metadata, "heatmapCooldown")
+			&& typeof metadata.heatmapCooldown === "number"
+			&& hasProperty(metadata, "maxStacked")
+			&& typeof metadata.maxStacked === "number"
+			&& hasProperty(metadata, "canvasCode")
+			&& typeof metadata.canvasCode === "string";
+	}
 }
 
 export interface SyncData {
@@ -57,16 +98,24 @@ export interface SyncData {
 
 export interface Pxls {
 	on(event: "ready", listener: () => void): this;
+	on(event: "error", listener: (error: Error) => void): this;
 	on(event: "disconnect", listener: () => void): this;
 	on(event: "pixel", listener: (pixel: Pixel & { oldColor?: number }) => void): this;
 	on(event: "users", listener: (users: number) => void): this;
 	on(event: "sync", listener: (data: SyncData) => void): this;
+	on(event: "alert", listener: (alert: AlertMessage) => void): this;
+	on(event: "notification", listener: (notification: Notification) => void): this;
+	on(event: "chatmessage", listener: (message: ChatMessage) => void): this;
 	
 	emit(event: "ready"): boolean;
+	emit(event: "error", error: Error): boolean;
 	emit(event: "disconnect"): boolean;
 	emit(event: "pixel", pixel: Pixel & { oldColor?: number }): boolean;
 	emit(event: "users", users: number): boolean;
 	emit(event: "sync", data: SyncData): boolean;
+	emit(event: "alert", notification: AlertMessage): boolean;
+	emit(event: "notification", notification: Notification): boolean;
+	emit(event: "chatmessage", message: ChatMessage): boolean;
 }
 
 export enum BufferType {
@@ -95,6 +144,9 @@ export class Pxls extends EventEmitter {
 	private heatmapdata?: Uint8Array;
 	private placemapdata?: Uint8Array;
 	private virginmapdata?: Uint8Array;
+
+	readonly notifications: Notification[] = [];
+	private readonly notificationBuffer: Notification[] = [];
 
 	private heartbeatTimeout?: NodeJS.Timeout;
 
@@ -170,8 +222,6 @@ export class Pxls extends EventEmitter {
 			});
 
 			this.canvas[address] = pixel.color;
-		} else {
-			this.emit("pixel", pixel);
 		}
 	}
 
@@ -213,13 +263,17 @@ export class Pxls extends EventEmitter {
 				ws.on("message", data => {
 					const message: unknown = JSON.parse(data.toString());
 
-					if(!Message.validate(message)) 
-						throw new Error(`Message failed to validate: ${message}`);
+					if(!Message.validate(message))  {
+						this.emit("error", new ValidationError(message, "Message"));
+						return;
+					}
 					
 					switch(message.type) {
 					case "pixel":
-						if(!PixelsMessage.validate(message)) 
-							throw new Error(`PixelMessage failed to validate: ${message}`);
+						if(!PixelsMessage.validate(message)) {
+							this.emit("error", new ValidationError(message, "PixelMessage"));
+							return;
+						}
 
 						for(const pixel of message.pixels) {
 							if(pixel.color === -1) {
@@ -232,6 +286,7 @@ export class Pxls extends EventEmitter {
 
 							if(this.synced) {
 								this.processPixel(pixel);
+								this.emit("pixel", pixel);
 							} else {
 								this.pixelBuffer.push(pixel);
 							}
@@ -246,12 +301,51 @@ export class Pxls extends EventEmitter {
 						// connection is dead.
 						this.heartbeatTimeout = setTimeout(reload, 660000);
 
-						if(!UsersMessage.validate(message)) 
-							throw new Error(`UsersMessage failed to validate: ${message}`);
+						if(!UsersMessage.validate(message))  {
+							this.emit("error", new ValidationError(message, "UsersMessage"));
+							return;
+						}
 
 						this.userCount = message.count;
 						
 						this.emit("users", message.count);
+						break;
+					case "alert":
+						if(!AlertMessage.validate(message))  {
+							this.emit("error", new ValidationError(message, "AlertMessage"));
+							return;
+						}
+
+						this.emit("alert", message);
+						break;
+					case "notification":
+						if(!NotificationMessage.validate(message))  {
+							this.emit("error", new ValidationError(message, "NotificationMessage"));
+							return;
+						}
+
+						if(this.synced) {
+							this.notifications.push(message.notification);
+							this.emit("notification", message.notification);
+						} else {
+							this.notificationBuffer.push(message.notification);
+						}
+
+						break;
+					case "chat_message":
+						if(!ChatMessageMessage.validate(message))  {
+							this.emit("error", new ValidationError(message, "ChatMessageMessage"));
+							return;
+						}
+
+						// NOTE: I'm not storing a buffer chat messages here.
+						// While that could be handy, pxls' official instance seems
+						// mostly against third-parties collecting that sort of data.
+
+						// You are encouraged not to store this long-term if running
+						// against the official instance.
+						this.emit("chatmessage", message.message);
+							
 						break;
 					}
 				});
@@ -336,7 +430,16 @@ export class Pxls extends EventEmitter {
 	}
 
 	async sync() {
-		const metadata = (await got(`https://${this.site}/info`, { "json": true })).body;
+		// awaiting later makes this parallel
+		// at least, that's the theory I'm working on.
+		const notificationsPromise = got(`https://${this.site}/notifications`, { "responseType": "json" });
+
+		const metadata: unknown = (await got(`https://${this.site}/info`, { "responseType": "json" })).body;
+
+		// TODO: probably do this differently
+		if(!Metadata.validate(metadata)) {
+			throw new Error(`Metadata failed to validate: ${inspect(metadata)}`);
+		}
 
 		const { width, height, palette, heatmapCooldown, maxStacked, canvasCode } = metadata;
 		this.setMetadata(width, height, palette, heatmapCooldown, maxStacked, canvasCode);
@@ -362,6 +465,14 @@ export class Pxls extends EventEmitter {
 				}
 			})
 		);
+
+		const notifications: unknown = (await notificationsPromise).body;
+
+		if(Array.isArray(notifications)) {
+			this.notifications.push(...notifications.filter(n => Notification.validate(n)));
+		}
+
+		this.notifications.push(...this.notificationBuffer.splice(0));
 
 		const buffersSyncdata = Object.fromEntries(buffers);
 

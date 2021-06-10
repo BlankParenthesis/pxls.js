@@ -1,6 +1,6 @@
 {
 	"name": "pxls",
-	"version": "1.7.1",
+	"version": "2.0.0",
 	"description": "A module for interacting with the api for pxls.space",
 	"keywords": [
 		"pxls",
@@ -35,10 +35,10 @@
 	},
 	"dependencies": {
 		"color-parse": "^1.0.0",
-		"got": "^8.0.0",
-		"pngjs": "^3.0.0",
+		"got": "^11.0.0",
+		"pngjs": "^6.0.0",
 		"should": "^13.0.0",
-		"ws": "^5.0.0"
+		"ws": "^7.0.0"
 	},
 	"devDependencies": {
 		"@types/got": "^9.6.11",
