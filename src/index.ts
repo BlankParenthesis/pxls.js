@@ -4,7 +4,7 @@ import { inspect } from "util";
 
 import * as should from "should";
 
-import got from "got";
+import fetch from "node-fetch";
 import color = require("color-parse");
 import * as WebSocket from "ws";
 import { PNG } from "pngjs";
@@ -435,9 +435,9 @@ export class Pxls extends EventEmitter {
 	async sync() {
 		// awaiting later makes this parallel
 		// at least, that's the theory I'm working on.
-		const notificationsPromise = got(`https://${this.site}/notifications`, { "responseType": "json" });
+		const notificationsPromise = fetch(`https://${this.site}/notifications`);
 
-		const metadata: unknown = (await got(`https://${this.site}/info`, { "responseType": "json" })).body;
+		const metadata: unknown = await (await fetch(`https://${this.site}/info`)).json();
 
 		// TODO: probably do this differently
 		if(!Metadata.validate(metadata)) {
@@ -452,7 +452,7 @@ export class Pxls extends EventEmitter {
 
 		const buffers = await Promise.all(
 			bufferSources.map(async ([type, url]): Promise<[string, Uint8Array]> => {
-				const buffer = await pipe(got.stream(url), new Uint8Array(width * height));
+				const buffer = await pipe((await fetch(url)).body, new Uint8Array(width * height));
 
 				switch(type) {
 				case BufferType.CANVAS:

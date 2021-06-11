@@ -1,5 +1,4 @@
 import { inspect } from "util";
-import { Readable } from "stream";
 
 export function isObject<
 	X extends {}
@@ -25,7 +24,7 @@ export function hasProperty<
 	return Object.prototype.hasOwnProperty.call(object, property);
 }
 
-export async function pipe(stream: Readable, buffer: Uint8Array): Promise<Uint8Array> {
+export async function pipe(stream: NodeJS.ReadableStream, buffer: Uint8Array): Promise<Uint8Array> {
 	return await new Promise((resolve, reject) => {
 		let i = 0;
 		stream.on("data", b => {
