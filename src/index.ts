@@ -286,7 +286,6 @@ export class Pxls extends EventEmitter {
 
 							if(this.synced) {
 								this.processPixel(pixel);
-								this.emit("pixel", pixel);
 							} else {
 								this.pixelBuffer.push(pixel);
 							}
