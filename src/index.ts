@@ -241,19 +241,17 @@ export class Pxls extends EventEmitter {
 					ws.close();
 				}
 	
-				this.emit("disconnect");
 				this.synced = false;
 
 				while(!this.synced) {
 					try {
 						await this.connectWS();
 						await this.sync();
+						this.emit("ready");
 					} catch(e) {
 						await wait(30000);
 					}
 				}
-	
-				this.emit("ready");
 			};
 	
 			this.ws.once("open", () => {
@@ -298,7 +296,7 @@ export class Pxls extends EventEmitter {
 						// Pxls sends this packet at least once every 10 minutes.
 						// If we don't get one for at least 11 minutes, the
 						// connection is dead.
-						this.heartbeatTimeout = setTimeout(reload, 660000);
+						this.heartbeatTimeout = setTimeout(() => ws.close(), 660000);
 
 						if(!UsersMessage.validate(message))  {
 							this.emit("error", new ValidationError(message, "UsersMessage"));
@@ -350,9 +348,12 @@ export class Pxls extends EventEmitter {
 				});
 				ws.once("error", e => {
 					this.emit("error", e);
+					ws.close();
+				});
+				ws.once("close", () => {
+					this.emit("disconnect");
 					reload();
 				});
-				ws.once("close", reload);
 				resolve();
 			});
 
