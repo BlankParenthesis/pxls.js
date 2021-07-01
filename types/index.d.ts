@@ -138,7 +138,7 @@ export declare class Pxls extends EventEmitter {
      * To get the total time to get some stack count, Call this once at every stack stage.
      * Example for final stack count = 5:
      * `[0, 1, 2, 3, 4].reduce((cooldown, stackSize) => cooldown + currentCooldownForStackCount(stackSize), 0)`
-     * @returns The time the stacked pixel count is `availablePixels` before becoming `availablePixels + 1`
+     * @returns The time in seconds the stacked pixel count is `availablePixels` before becoming `availablePixels + 1`
      */
     static cooldownForUserCountAndStackCount(users: number, availablePixels: number, config?: CooldownOptions): number;
     currentCooldownForStackCount(availablePixels: number): number;

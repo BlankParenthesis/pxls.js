@@ -253,11 +253,16 @@ export class Pxls extends EventEmitter {
 		}
 
 		return await new Promise((resolve, reject) => {
+			// TODO: reuse this is possible
 			const ws = this.wsVariable = new WebSocket(`wss://${this.site}/ws`);
 
 			const reload = async () => {
 				if(ws.readyState !== WebSocket.CLOSED) {
 					ws.close();
+				}
+
+				if(typeof this.heartbeatTimeout !== "undefined") {
+					clearTimeout(this.heartbeatTimeout);
 				}
 	
 				this.synced = false;
@@ -272,10 +277,23 @@ export class Pxls extends EventEmitter {
 					}
 				}
 			};
+
+			const HEARTBEAT_TIMEOUT = 30000 + 1000; // network timeout plus a second
+
+			const heartbeat = () => {
+				if(typeof this.heartbeatTimeout !== "undefined") {
+					clearTimeout(this.heartbeatTimeout);
+				}
+
+				this.heartbeatTimeout = setTimeout(() => ws.terminate(), HEARTBEAT_TIMEOUT);
+			};
 	
 			this.ws.once("open", () => {
 				ws.off("error", reject);
 				ws.off("close", reject);
+
+				heartbeat();
+				ws.on("ping", heartbeat);
 
 				ws.on("message", data => {
 					const message: unknown = JSON.parse(data.toString());
@@ -309,14 +327,6 @@ export class Pxls extends EventEmitter {
 						}
 						break;
 					case "users":
-						if(typeof this.heartbeatTimeout !== "undefined") {
-							clearTimeout(this.heartbeatTimeout);
-						}
-						// Pxls sends this packet at least once every 10 minutes.
-						// If we don't get one for at least 11 minutes, the
-						// connection is dead.
-						this.heartbeatTimeout = setTimeout(() => ws.close(), 660000);
-
 						if(!UsersMessage.validate(message))  {
 							this.emit("error", new ValidationError(message, "UsersMessage"));
 							return;
