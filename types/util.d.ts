@@ -7,3 +7,5 @@ export declare class ValidationError extends Error {
     readonly object: unknown;
     constructor(object: unknown, objectName: string);
 }
+export declare function range(start: number, end: number): number[];
+export declare const sum: (total: number, next: number) => number;

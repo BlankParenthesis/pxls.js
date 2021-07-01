@@ -21,7 +21,7 @@ import {
 	ChatMessageMessage,
 } from "./messages";
 
-import { isObject, hasProperty, pipe, ValidationError } from "./util";
+import { isObject, hasProperty, pipe, ValidationError, range, sum } from "./util";
 
 const wait = (t: number) => new Promise(r => setTimeout(r, t));
 
@@ -125,10 +125,34 @@ export enum BufferType {
 	VIRGINMAP = 3,
 }
 
+export interface CooldownOptions {
+	globalOffset: number; 
+	userOffset: number; 
+	steepness: number; 
+	multiplier: number; 
+}
+
 export interface PxlsOptions {
 	site?: string;
 	buffers?: ArrayLike<BufferType>;
+	cooldownConfig?: CooldownOptions;
 }
+
+const DEFAULT_OPTIONS = {
+	"site": "pxls.space",
+	"buffers": [
+		BufferType.CANVAS,
+		BufferType.HEATMAP,
+		BufferType.PLACEMAP,
+		BufferType.VIRGINMAP,
+	],
+	"cooldownConfig": {
+		"globalOffset": 6.5,
+		"userOffset": 11.96,
+		"steepness": 2.5,
+		"multiplier": 1,
+	}
+};
 
 export class Pxls extends EventEmitter {
 	readonly site: string;
@@ -152,18 +176,12 @@ export class Pxls extends EventEmitter {
 
 	private heatmapCooldownInterval?: NodeJS.Timeout;
 
+	private cooldownConfig: CooldownOptions;
+
 	constructor(optionsOrSite?: string | PxlsOptions) {
 		super();
 
-		const options = {
-			"site": "pxls.space",
-			"buffers": [
-				BufferType.CANVAS,
-				BufferType.HEATMAP,
-				BufferType.PLACEMAP,
-				BufferType.VIRGINMAP,
-			],
-		};
+		const options = { ...DEFAULT_OPTIONS };
 
 		if(typeof optionsOrSite === "object") {
 			for(const [key, value] of Object.entries(optionsOrSite)) {
@@ -179,6 +197,7 @@ export class Pxls extends EventEmitter {
 
 		this.site = options.site;
 		this.bufferRestriction = new Set(options.buffers);
+		this.cooldownConfig = options.cooldownConfig;
 	}
 
 	private get ws(): WebSocket {
@@ -682,6 +701,52 @@ export class Pxls extends EventEmitter {
 
 	get rgba() {
 		return Pxls.convertBufferToRGBA(this.canvas, this.palette);
+	}
+
+	// TODO: store max-stacked
+
+	static cooldownForUserCount(
+		users: number, 
+		config: CooldownOptions = DEFAULT_OPTIONS.cooldownConfig
+	) {
+		const { globalOffset, userOffset, steepness, multiplier } = config; 
+		return (steepness * Math.sqrt(users + userOffset) + globalOffset) * multiplier;
+	}
+
+	get currentCooldown() {
+		return Pxls.cooldownForUserCount(this.users, this.cooldownConfig);
+	}
+
+	/**
+	 * To get the total time to get some stack count, Call this once at every stack stage.
+	 * Example for final stack count = 5:
+	 * `[0, 1, 2, 3, 4].reduce((cooldown, stackSize) => cooldown + currentCooldownForStackCount(stackSize), 0)`
+	 * @returns The time in seconds the stacked pixel count is `availablePixels` before becoming `availablePixels + 1`
+	 */
+	static cooldownForUserCountAndStackCount(
+		users: number, 
+		availablePixels: number,
+		config: CooldownOptions = DEFAULT_OPTIONS.cooldownConfig
+	) {
+		const cooldown = Pxls.cooldownForUserCount(users);
+	
+		if(availablePixels < 0) {
+			return 0;
+		} else if(availablePixels === 0) {
+			return cooldown;
+		} else {
+			const sumToStackCount = range(0, availablePixels - 1).reduce(sum, 0);
+
+			return (cooldown * 3) * (1 + availablePixels + sumToStackCount);
+		}
+	}
+
+	currentCooldownForStackCount(availablePixels: number) {
+		return Pxls.cooldownForUserCountAndStackCount(
+			this.users, 
+			availablePixels, 
+			this.cooldownConfig
+		);
 	}
 }
 

@@ -48,3 +48,13 @@ export class ValidationError extends Error {
 		this.object = object;
 	}
 }
+
+export function range(start: number, end: number) {
+	if(start <= end) {
+		return new Array(end - start).fill(0).map((_, i) => i + start);
+	} else {
+		return new Array(start - end).fill(0).map((_, i) => start - i);
+	}
+}
+
+export const sum = (total: number, next: number) => total + next;

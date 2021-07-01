@@ -57,9 +57,16 @@ export declare enum BufferType {
     PLACEMAP = 2,
     VIRGINMAP = 3
 }
+export interface CooldownOptions {
+    globalOffset: number;
+    userOffset: number;
+    steepness: number;
+    multiplier: number;
+}
 export interface PxlsOptions {
     site?: string;
     buffers?: ArrayLike<BufferType>;
+    cooldownConfig?: CooldownOptions;
 }
 export declare class Pxls extends EventEmitter {
     readonly site: string;
@@ -77,6 +84,7 @@ export declare class Pxls extends EventEmitter {
     private readonly notificationBuffer;
     private heartbeatTimeout?;
     private heatmapCooldownInterval?;
+    private cooldownConfig;
     constructor(optionsOrSite?: string | PxlsOptions);
     private get ws();
     connect(): Promise<void>;
@@ -124,5 +132,15 @@ export declare class Pxls extends EventEmitter {
     getCroppedCanvas(x: number, y: number, width: number, height: number): Uint8Array;
     static convertBufferToRGBA(buffer: Uint8Array, palette: PxlsColor[]): Uint8Array;
     get rgba(): Uint8Array;
+    static cooldownForUserCount(users: number, config?: CooldownOptions): number;
+    get currentCooldown(): number;
+    /**
+     * To get the total time to get some stack count, Call this once at every stack stage.
+     * Example for final stack count = 5:
+     * `[0, 1, 2, 3, 4].reduce((cooldown, stackSize) => cooldown + currentCooldownForStackCount(stackSize), 0)`
+     * @returns The time the stacked pixel count is `availablePixels` before becoming `availablePixels + 1`
+     */
+    static cooldownForUserCountAndStackCount(users: number, availablePixels: number, config?: CooldownOptions): number;
+    currentCooldownForStackCount(availablePixels: number): number;
 }
 export default Pxls;
