@@ -693,8 +693,6 @@ export class Pxls extends EventEmitter {
 		return Pxls.convertBufferToRGBA(this.canvas, this.palette);
 	}
 
-	// TODO: store max-stacked
-
 	static cooldownForUserCount(
 		users: number, 
 		config: CooldownOptions = DEFAULT_OPTIONS.cooldownConfig
