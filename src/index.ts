@@ -1,4 +1,3 @@
-import * as fs from "fs";
 import * as EventEmitter from "events";
 import { inspect } from "util";
 
@@ -8,7 +7,6 @@ import fetch from "node-fetch";
 import color = require("color-parse");
 import * as WebSocket from "ws";
 import sharp = require("sharp");
-import { Sharp, SharpOptions } from "sharp";
 
 import { 
 	Message, 
