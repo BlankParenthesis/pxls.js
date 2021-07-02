@@ -7,7 +7,8 @@ import * as should from "should";
 import fetch from "node-fetch";
 import color = require("color-parse");
 import * as WebSocket from "ws";
-import { PNG } from "pngjs";
+import sharp = require("sharp");
+import { Sharp, SharpOptions } from "sharp";
 
 import { 
 	Message, 
@@ -516,14 +517,6 @@ export class Pxls extends EventEmitter {
 		this.synced = true;
 	}
 
-	private static async savePng(file: string, png: PNG) {
-		return await new Promise((resolve, reject) => {
-			png.pipe(fs.createWriteStream(file))
-				.once("finish", resolve)
-				.once("error", reject);
-		});
-	}
-
 	/**
 	 * @alias saveCanvas
 	 */
@@ -532,51 +525,36 @@ export class Pxls extends EventEmitter {
 	}
 	
 	async saveCanvas(file: string) {
-		await Pxls.savePng(file, this.png);
+		const { width, height } = this;
+
+		await sharp(this.rgba as Buffer, { "raw": { 
+			width, 
+			height, 
+			"channels": 4,
+		} }).toFile(file);
+	}
+
+	private async saveBufferBW(file: string, buffer: Uint8Array) {
+		const { width, height } = this;
+
+		await sharp(buffer as Buffer, { "raw": {
+			width, 
+			height, 
+			"channels": 1,
+		} }).toColorspace("b-w")
+			.toFile(file);
 	}
 
 	async saveHeatmap(file: string) {
-		await Pxls.savePng(file, this.heatmapPng);
+		await this.saveBufferBW(file, this.heatmap);
 	}
 
 	async savePlacemap(file: string) {
-		await Pxls.savePng(file, this.placemapPng);
+		await this.saveBufferBW(file, this.placemap);
 	}
 
 	async saveVirginmap(file: string) {
-		await Pxls.savePng(file, this.virginmapPng);
-	}
-
-	private static pngFromGrayscaleBuffer(buffer: Uint8Array, width: number, height: number) {
-		if(buffer.length !== width * height)
-			throw new Error("Incompatible buffer sizes given");
-
-		// 0 is grayscale, no alpha.
-		const colorType = 0;
-		const inputColorType = 0;
-
-		const image = new PNG({ width, height, colorType, inputColorType });
-
-		image.data.set(buffer);
-		return image.pack();
-	}
-
-	get png() {
-		const image = new PNG({ "width": this.width, "height": this.height });
-		image.data.set(this.rgba);
-		return image.pack();
-	}
-
-	get heatmapPng() {
-		return Pxls.pngFromGrayscaleBuffer(this.heatmap, this.width, this.height);
-	}
-
-	get placemapPng() {
-		return Pxls.pngFromGrayscaleBuffer(this.placemap.map(v => v === 0 ? 0 : 255), this.width, this.height);
-	}
-
-	get virginmapPng() {
-		return Pxls.pngFromGrayscaleBuffer(this.virginmap, this.width, this.height);
+		await this.saveBufferBW(file, this.virginmap);
 	}
 
 	address(x: number, y: number) {

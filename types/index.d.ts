@@ -1,6 +1,5 @@
 /// <reference types="node" />
 import * as EventEmitter from "events";
-import { PNG } from "pngjs";
 import { Message, Pixel, PixelsMessage, UsersMessage, AlertMessage, Notification, NotificationMessage, ChatMessage, ChatMessageMessage } from "./messages";
 export { Message, Pixel, PixelsMessage, UsersMessage, AlertMessage, Notification, NotificationMessage, ChatMessage, ChatMessageMessage, };
 export declare const TRANSPARENT_PIXEL = 255;
@@ -95,20 +94,15 @@ export declare class Pxls extends EventEmitter {
     private setMetadata;
     private get bufferSources();
     sync(): Promise<void>;
-    private static savePng;
     /**
      * @alias saveCanvas
      */
     save(file: string): Promise<void>;
     saveCanvas(file: string): Promise<void>;
+    private saveBufferBW;
     saveHeatmap(file: string): Promise<void>;
     savePlacemap(file: string): Promise<void>;
     saveVirginmap(file: string): Promise<void>;
-    private static pngFromGrayscaleBuffer;
-    get png(): PNG;
-    get heatmapPng(): PNG;
-    get placemapPng(): PNG;
-    get virginmapPng(): PNG;
     address(x: number, y: number): number;
     get users(): number;
     get width(): number;

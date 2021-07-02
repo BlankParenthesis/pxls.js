@@ -1,6 +1,6 @@
 {
 	"name": "pxls",
-	"version": "2.2.2",
+	"version": "2.3.0",
 	"description": "A module for interacting with the api for pxls.space",
 	"keywords": [
 		"pxls",
@@ -36,13 +36,13 @@
 	"dependencies": {
 		"color-parse": "^1.0.0",
 		"node-fetch": "^2.6.1",
-		"pngjs": "^6.0.0",
+		"sharp": "^0.28.3",
 		"should": "^13.0.0",
 		"ws": "^7.0.0"
 	},
 	"devDependencies": {
 		"@types/node-fetch": "^2.5.10",
-		"@types/pngjs": "^6.0.0",
+		"@types/sharp": "^0.28.3",
 		"@types/should": "^13.0.0",
 		"@types/ws": "^7.4.4",
 		"@typescript-eslint/parser": "^4.26.0",
