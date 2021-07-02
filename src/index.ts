@@ -704,7 +704,11 @@ export class Pxls extends EventEmitter {
 		rgba.fill(255);
 
 		for(let i = 0; i < buffer.length; i++) {
-			rgba.set(palette[buffer[i]].values, i << 2);
+			if(buffer[i] === TRANSPARENT_PIXEL) {
+				rgba[(i << 2) + 3] = 0;
+			} else {
+				rgba.set(palette[buffer[i]].values, i << 2);
+			}
 		}
 		return rgba;
 	}
