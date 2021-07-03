@@ -6,7 +6,7 @@ Examples
 --------
 Listening to all pixel placements:
 ```javascript
-const { Pxls } = require("pxls");
+const { Pxls } = require("@blankparenthesis/pxlsspace");
 
 const pxls = new Pxls({ 
 	site: "pxls.space", 
@@ -18,7 +18,7 @@ pxls.connect();
 
 Save a snapshot of the canvas:
 ```javascript
-const { Pxls, BufferType } = require("pxls");
+const { Pxls, BufferType } = require("@blankparenthesis/pxlsspace");
 
 const pxls = new Pxls({ 
 	site: "pxls.space", 
@@ -31,7 +31,7 @@ pxls.connect().then(() => {
 
 Getting the online user count:
 ```javascript
-const { Pxls } = require("pxls");
+const { Pxls } = require("@blankparenthesis/pxlsspace");
 
 const pxls = new Pxls({ 
 	site: "pxls.space", 
