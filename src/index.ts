@@ -122,6 +122,7 @@ export enum BufferType {
 	HEATMAP = 1,
 	PLACEMAP = 2,
 	VIRGINMAP = 3,
+	INITIAL_CANVAS = 4,
 }
 
 export interface CooldownOptions {
@@ -144,6 +145,7 @@ const DEFAULT_OPTIONS = {
 		BufferType.HEATMAP,
 		BufferType.PLACEMAP,
 		BufferType.VIRGINMAP,
+		BufferType.INITIAL_CANVAS,
 	],
 	"cooldownConfig": {
 		"globalOffset": 6.5,
@@ -167,6 +169,7 @@ export class Pxls extends EventEmitter {
 	private heatmapdata?: Uint8Array;
 	private placemapdata?: Uint8Array;
 	private virginmapdata?: Uint8Array;
+	private initialcanvasdata?: Uint8Array;
 
 	readonly notifications: Notification[] = [];
 	private readonly notificationBuffer: Notification[] = [];
@@ -457,6 +460,7 @@ export class Pxls extends EventEmitter {
 			[BufferType.HEATMAP, `https://${this.site}/heatmap`],
 			[BufferType.PLACEMAP, `https://${this.site}/placemap`],
 			[BufferType.VIRGINMAP, `https://${this.site}/virginmap`],
+			[BufferType.INITIAL_CANVAS, `https://${this.site}/initialboarddata`],
 		]);
 	}
 
@@ -491,6 +495,8 @@ export class Pxls extends EventEmitter {
 					return ["canvas", this.placemapdata = buffer];
 				case BufferType.VIRGINMAP:
 					return ["canvas", this.virginmapdata = buffer];
+				case BufferType.INITIAL_CANVAS:
+					return ["canvas", this.initialcanvasdata = buffer];
 				default:
 					throw new Error("Unknown buffer type used internally");
 				}
@@ -521,15 +527,25 @@ export class Pxls extends EventEmitter {
 	async save(file: string) {
 		await this.saveCanvas(file);
 	}
-	
-	async saveCanvas(file: string) {
+
+	private async saveBufferColor(file: string, buffer: Uint8Array) {
 		const { width, height } = this;
 
-		await sharp(this.rgba as Buffer, { "raw": { 
+		await sharp(buffer as Buffer, { "raw": { 
 			width, 
 			height, 
 			"channels": 4,
 		} }).toFile(file);
+	}
+
+	async saveCanvas(file: string) {
+		await this.saveBufferColor(file, this.rgba);
+	}
+
+	async saveInitialCanvas(file: string) {
+		const rgbaBuffer = Pxls.convertBufferToRGBA(this.initialcanvas, this.palette);
+
+		await this.saveBufferColor(file, rgbaBuffer);
 	}
 
 	private async saveBufferBW(file: string, buffer: Uint8Array) {
@@ -623,6 +639,12 @@ export class Pxls extends EventEmitter {
 		if(typeof this.placemapdata === "undefined")
 			throw new Error("Missing placemap data");
 		return this.placemapdata;
+	}
+
+	get initialcanvas() {
+		if(typeof this.initialcanvasdata === "undefined")
+			throw new Error("Missing initialcanvas data");
+		return this.initialcanvasdata;
 	}
 
 	private cropBuffer(

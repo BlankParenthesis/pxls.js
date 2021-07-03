@@ -54,7 +54,8 @@ export declare enum BufferType {
     CANVAS = 0,
     HEATMAP = 1,
     PLACEMAP = 2,
-    VIRGINMAP = 3
+    VIRGINMAP = 3,
+    INITIAL_CANVAS = 4
 }
 export interface CooldownOptions {
     globalOffset: number;
@@ -79,6 +80,7 @@ export declare class Pxls extends EventEmitter {
     private heatmapdata?;
     private placemapdata?;
     private virginmapdata?;
+    private initialcanvasdata?;
     readonly notifications: Notification[];
     private readonly notificationBuffer;
     private heartbeatTimeout?;
@@ -98,7 +100,9 @@ export declare class Pxls extends EventEmitter {
      * @alias saveCanvas
      */
     save(file: string): Promise<void>;
+    private saveBufferColor;
     saveCanvas(file: string): Promise<void>;
+    saveInitialCanvas(file: string): Promise<void>;
     private saveBufferBW;
     saveHeatmap(file: string): Promise<void>;
     savePlacemap(file: string): Promise<void>;
@@ -115,6 +119,7 @@ export declare class Pxls extends EventEmitter {
     get heatmap(): Uint8Array;
     get virginmap(): Uint8Array;
     get placemap(): Uint8Array;
+    get initialcanvas(): Uint8Array;
     private cropBuffer;
     cropCanvas(x: number, y: number, width: number, height: number): Uint8Array;
     cropHeatmap(x: number, y: number, width: number, height: number): Uint8Array;
