@@ -1,5 +1,6 @@
 import * as EventEmitter from "events";
 import { inspect } from "util";
+import { URL } from "url";
 
 import * as should from "should";
 
@@ -38,39 +39,80 @@ export {
 
 export const TRANSPARENT_PIXEL = 255;
 
+interface PxlsColorlike {
+	name: string;
+	value: string;
+}
+
 export class PxlsColor {
 	public readonly name: string;
 	public readonly values: [number, number, number];
 
-	constructor(object: unknown) {
-		if(!isObject(object)) 
-			throw new Error("Invalid color: expected object");
-		if(!hasProperty(object, "name")) 
-			throw new Error("Invalid color: missing name");
-		if(typeof object.name !== "string") 
-			throw new Error("Invalid color: expected name to be a string");
-		if(!hasProperty(object, "value")) 
-			throw new Error("Invalid color: missing value");
-		if(typeof object.value !== "string") 
-			throw new Error("Invalid color: expected value to be a string");
-
+	constructor(object: PxlsColorlike) {
 		this.name = object.name;
 		this.values = color(`#${object.value}`).values;
 	}
+
+	static validate<C extends PxlsColorlike>(color: unknown): color is C {
+		return isObject(color)
+			&& hasProperty(color, "name")
+			&& typeof color.name === "string"
+			&& hasProperty(color, "value")
+			&& typeof color.value === "string";
+	}
+}
+
+interface Emojilike {
+	name: string;
+	emoji: string;
+}
+
+export class Emoji {
+	readonly name: string;
+	readonly url: URL;
+
+	constructor(emoji: Emojilike, base: URL) {
+		this.name = emoji.name;
+		this.url = new URL(emoji.emoji, base);
+	}
+
+	static validate<E extends Emojilike>(emoji: unknown): emoji is E {
+		return isObject(emoji)
+			&& hasProperty(emoji, "name")
+			&& typeof emoji.name === "string"
+			&& hasProperty(emoji, "emoji")
+			&& typeof emoji.emoji === "string";
+	}
+}
+
+interface Metadatalike {
+	width: number;
+	height: number;
+	palette: PxlsColorlike[];
+	heatmapCooldown: number;
+	maxStacked: number;
+	canvasCode: string;
+	chatEnabled: boolean;
+	chatCharacterLimit: number;
+	chatBannerText: string[];
+	customEmoji: Emojilike[];
 }
 
 export interface Metadata {
-	// TODO: add metadata
 	width: number;
 	height: number;
 	palette: PxlsColor[];
 	heatmapCooldown: number;
 	maxStacked: number;
 	canvasCode: string;
+	chatEnabled: boolean;
+	chatCharacterLimit: number;
+	chatBannerText: string[];
+	customEmoji: Emoji[];
 }
 
 export class Metadata {
-	static validate<M extends Metadata>(metadata: unknown): metadata is M {
+	static validate<M extends Metadatalike>(metadata: unknown): metadata is M {
 		return isObject(metadata)
 			&& hasProperty(metadata, "width")
 			&& typeof metadata.width === "number"
@@ -78,12 +120,23 @@ export class Metadata {
 			&& typeof metadata.height === "number"
 			&& hasProperty(metadata, "palette")
 			&& Array.isArray(metadata.palette)
+			&& metadata.palette.every(c => PxlsColor.validate(c))
 			&& hasProperty(metadata, "heatmapCooldown")
 			&& typeof metadata.heatmapCooldown === "number"
 			&& hasProperty(metadata, "maxStacked")
 			&& typeof metadata.maxStacked === "number"
 			&& hasProperty(metadata, "canvasCode")
-			&& typeof metadata.canvasCode === "string";
+			&& typeof metadata.canvasCode === "string"
+			&& hasProperty(metadata, "chatEnabled")
+			&& typeof metadata.chatEnabled === "boolean"
+			&& hasProperty(metadata, "chatCharacterLimit")
+			&& typeof metadata.chatCharacterLimit === "number"
+			&& hasProperty(metadata, "chatBannerText")
+			&& Array.isArray(metadata.chatBannerText)
+			&& metadata.chatBannerText.every(t => typeof t === "string")
+			&& hasProperty(metadata, "customEmoji")
+			&& Array.isArray(metadata.customEmoji)
+			&& metadata.customEmoji.every(e => Emoji.validate(e));
 	}
 }
 
@@ -413,28 +466,27 @@ export class Pxls extends EventEmitter {
 		// TODO: this should probably wait for the socket actually being closed if possible.
 	}
 
-	private setMetadata(
-		width: number, 
-		height: number, 
-		palette: unknown[], 
-		heatmapCooldown: number, 
-		maxStacked: number, 
-		canvasCode: string,
-	) {
-		should(width).be.a.Number().and.not.Infinity().and.not.NaN().and.above(0);
-		should(height).be.a.Number().and.not.Infinity().and.not.NaN().and.above(0);
-		should(palette).be.an.Array().and.not.empty();
-		should(heatmapCooldown).be.a.Number().and.not.Infinity().and.not.NaN().and.aboveOrEqual(0);
-		should(maxStacked).be.a.Number().and.not.Infinity().and.not.NaN().and.aboveOrEqual(0);
-		should(canvasCode).be.a.String();
+	private setMetadata(metadata: Metadatalike) {
+		should(metadata.width).be.a.Number().and.not.Infinity().and.not.NaN().and.above(0);
+		should(metadata.height).be.a.Number().and.not.Infinity().and.not.NaN().and.above(0);
+		should(metadata.palette).be.an.Array().and.not.empty();
+		should(metadata.heatmapCooldown).be.a.Number().and.not.Infinity().and.not.NaN().and.aboveOrEqual(0);
+		should(metadata.maxStacked).be.a.Number().and.not.Infinity().and.not.NaN().and.aboveOrEqual(0);
+		should(metadata.canvasCode).be.a.String();
+
+		const emojiBaseUrl = new URL(`https://${this.site}/emoji/`);
 
 		this.metadata = {
-			"width": width,
-			"height": height,
-			"palette": palette.map(e => new PxlsColor(e)),
-			"heatmapCooldown": heatmapCooldown,
-			"maxStacked": maxStacked,
-			"canvasCode": canvasCode,
+			"width": metadata.width,
+			"height": metadata.height,
+			"palette": metadata.palette.map(c => new PxlsColor(c)),
+			"heatmapCooldown": metadata.heatmapCooldown,
+			"maxStacked": metadata.maxStacked,
+			"canvasCode": metadata.canvasCode,
+			"chatEnabled": metadata.chatEnabled,
+			"chatCharacterLimit": metadata.chatCharacterLimit,
+			"chatBannerText": metadata.chatBannerText,
+			"customEmoji": metadata.customEmoji.map(e => new Emoji(e, emojiBaseUrl)),
 		};
 
 		if(typeof this.heatmapCooldownInterval !== "undefined") {
@@ -471,20 +523,18 @@ export class Pxls extends EventEmitter {
 
 		const metadata: unknown = await (await fetch(`https://${this.site}/info`)).json();
 
-		// TODO: probably do this differently
 		if(!Metadata.validate(metadata)) {
 			throw new Error(`Metadata failed to validate: ${inspect(metadata)}`);
 		}
 
-		const { width, height, palette, heatmapCooldown, maxStacked, canvasCode } = metadata;
-		this.setMetadata(width, height, palette, heatmapCooldown, maxStacked, canvasCode);
+		this.setMetadata(metadata);
 
 		const bufferSources = [...this.bufferSources.entries()]
 			.filter(([type, _]) => this.bufferRestriction.has(type));
 
 		const buffers = await Promise.all(
 			bufferSources.map(async ([type, url]): Promise<[string, Uint8Array]> => {
-				const buffer = await pipe((await fetch(url)).body, new Uint8Array(width * height));
+				const buffer = await pipe((await fetch(url)).body, new Uint8Array(this.width * this.height));
 
 				switch(type) {
 				case BufferType.CANVAS:
@@ -517,7 +567,7 @@ export class Pxls extends EventEmitter {
 			this.processPixel(pixel);
 		}
 
-		this.emit("sync", { metadata, ...buffersSyncdata });
+		this.emit("sync", { "metadata": this.metadata as Metadata, ...buffersSyncdata });
 		this.synced = true;
 	}
 
@@ -575,46 +625,70 @@ export class Pxls extends EventEmitter {
 		return (y * this.width) + x;
 	}
 
-	get users(): number {
+	get users() {
 		if(typeof this.userCount === "undefined")
 			throw new Error("User count is unknown");
 		return this.userCount;
 	}
 
-	get width(): number {
+	get width() {
 		if(typeof this.metadata === "undefined")
 			throw new Error("Missing metadata");
 		return this.metadata.width;
 	}
 
-	get height(): number {
+	get height() {
 		if(typeof this.metadata === "undefined")
 			throw new Error("Missing metadata");
 		return this.metadata.height;
 	}
 
-	get palette(): PxlsColor[] {
+	get palette() {
 		if(typeof this.metadata === "undefined")
 			throw new Error("Missing metadata");
 		return this.metadata.palette;
 	}
 
-	get heatmapCooldown(): number {
+	get heatmapCooldown() {
 		if(typeof this.metadata === "undefined")
 			throw new Error("Missing metadata");
 		return this.metadata.heatmapCooldown;
 	}
 
-	get maxStacked(): number {
+	get maxStacked() {
 		if(typeof this.metadata === "undefined")
 			throw new Error("Missing metadata");
 		return this.metadata.maxStacked;
 	}
 
-	get canvasCode(): string {
+	get canvasCode() {
 		if(typeof this.metadata === "undefined")
 			throw new Error("Missing metadata");
 		return this.metadata.canvasCode;
+	}
+
+	get chatEnabled() {
+		if(typeof this.metadata === "undefined")
+			throw new Error("Missing metadata");
+		return this.metadata.chatEnabled;
+	}
+
+	get chatCharacterLimit() {
+		if(typeof this.metadata === "undefined")
+			throw new Error("Missing metadata");
+		return this.metadata.chatCharacterLimit;
+	}
+
+	get chatBannerText() {
+		if(typeof this.metadata === "undefined")
+			throw new Error("Missing metadata");
+		return this.metadata.chatBannerText;
+	}
+
+	get customEmoji() {
+		if(typeof this.metadata === "undefined")
+			throw new Error("Missing metadata");
+		return this.metadata.customEmoji;
 	}
 
 	get canvas() {

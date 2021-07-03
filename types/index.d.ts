@@ -1,12 +1,40 @@
 /// <reference types="node" />
 import * as EventEmitter from "events";
+import { URL } from "url";
 import { Message, Pixel, PixelsMessage, UsersMessage, AlertMessage, Notification, NotificationMessage, ChatMessage, ChatMessageMessage } from "./messages";
 export { Message, Pixel, PixelsMessage, UsersMessage, AlertMessage, Notification, NotificationMessage, ChatMessage, ChatMessageMessage, };
 export declare const TRANSPARENT_PIXEL = 255;
+interface PxlsColorlike {
+    name: string;
+    value: string;
+}
 export declare class PxlsColor {
     readonly name: string;
     readonly values: [number, number, number];
-    constructor(object: unknown);
+    constructor(object: PxlsColorlike);
+    static validate<C extends PxlsColorlike>(color: unknown): color is C;
+}
+interface Emojilike {
+    name: string;
+    emoji: string;
+}
+export declare class Emoji {
+    readonly name: string;
+    readonly url: URL;
+    constructor(emoji: Emojilike, base: URL);
+    static validate<E extends Emojilike>(emoji: unknown): emoji is E;
+}
+interface Metadatalike {
+    width: number;
+    height: number;
+    palette: PxlsColorlike[];
+    heatmapCooldown: number;
+    maxStacked: number;
+    canvasCode: string;
+    chatEnabled: boolean;
+    chatCharacterLimit: number;
+    chatBannerText: string[];
+    customEmoji: Emojilike[];
 }
 export interface Metadata {
     width: number;
@@ -15,9 +43,13 @@ export interface Metadata {
     heatmapCooldown: number;
     maxStacked: number;
     canvasCode: string;
+    chatEnabled: boolean;
+    chatCharacterLimit: number;
+    chatBannerText: string[];
+    customEmoji: Emoji[];
 }
 export declare class Metadata {
-    static validate<M extends Metadata>(metadata: unknown): metadata is M;
+    static validate<M extends Metadatalike>(metadata: unknown): metadata is M;
 }
 export interface SyncData {
     metadata: Metadata;
@@ -115,6 +147,10 @@ export declare class Pxls extends EventEmitter {
     get heatmapCooldown(): number;
     get maxStacked(): number;
     get canvasCode(): string;
+    get chatEnabled(): boolean;
+    get chatCharacterLimit(): number;
+    get chatBannerText(): string[];
+    get customEmoji(): Emoji[];
     get canvas(): Uint8Array;
     get heatmap(): Uint8Array;
     get virginmap(): Uint8Array;
