@@ -205,7 +205,7 @@ const DEFAULT_OPTIONS = {
 		"userOffset": 11.96,
 		"steepness": 2.5,
 		"multiplier": 1,
-	}
+	},
 };
 
 export class Pxls extends EventEmitter {
@@ -292,7 +292,7 @@ export class Pxls extends EventEmitter {
 		if(this.bufferRestriction.has(BufferType.CANVAS)) {
 			this.emit("pixel", {
 				...pixel,
-				"oldColor": this.canvas[address]
+				"oldColor": this.canvas[address],
 			});
 
 			this.canvas[address] = pixel.color;
@@ -353,7 +353,7 @@ export class Pxls extends EventEmitter {
 				ws.on("message", data => {
 					const message: unknown = JSON.parse(data.toString());
 
-					if(!Message.validate(message))  {
+					if(!Message.validate(message)) {
 						this.emit("error", new ValidationError(message, "Message"));
 						return;
 					}
@@ -382,7 +382,7 @@ export class Pxls extends EventEmitter {
 						}
 						break;
 					case "users":
-						if(!UsersMessage.validate(message))  {
+						if(!UsersMessage.validate(message)) {
 							this.emit("error", new ValidationError(message, "UsersMessage"));
 							return;
 						}
@@ -392,7 +392,7 @@ export class Pxls extends EventEmitter {
 						this.emit("users", message.count);
 						break;
 					case "alert":
-						if(!AlertMessage.validate(message))  {
+						if(!AlertMessage.validate(message)) {
 							this.emit("error", new ValidationError(message, "AlertMessage"));
 							return;
 						}
@@ -400,7 +400,7 @@ export class Pxls extends EventEmitter {
 						this.emit("alert", message);
 						break;
 					case "notification":
-						if(!NotificationMessage.validate(message))  {
+						if(!NotificationMessage.validate(message)) {
 							this.emit("error", new ValidationError(message, "NotificationMessage"));
 							return;
 						}
@@ -414,7 +414,7 @@ export class Pxls extends EventEmitter {
 
 						break;
 					case "chat_message":
-						if(!ChatMessageMessage.validate(message))  {
+						if(!ChatMessageMessage.validate(message)) {
 							this.emit("error", new ValidationError(message, "ChatMessageMessage"));
 							return;
 						}
@@ -441,7 +441,6 @@ export class Pxls extends EventEmitter {
 				resolve();
 			});
 
-			
 			ws.once("error", reject);
 			ws.once("close", reject);
 		});
@@ -626,98 +625,114 @@ export class Pxls extends EventEmitter {
 	}
 
 	get users() {
-		if(typeof this.userCount === "undefined")
+		if(typeof this.userCount === "undefined") {
 			throw new Error("User count is unknown");
+		}
 		return this.userCount;
 	}
 
 	get width() {
-		if(typeof this.metadata === "undefined")
+		if(typeof this.metadata === "undefined") {
 			throw new Error("Missing metadata");
+		}
 		return this.metadata.width;
 	}
 
 	get height() {
-		if(typeof this.metadata === "undefined")
+		if(typeof this.metadata === "undefined") {
 			throw new Error("Missing metadata");
+		}
 		return this.metadata.height;
 	}
 
 	get palette() {
-		if(typeof this.metadata === "undefined")
+		if(typeof this.metadata === "undefined") {
 			throw new Error("Missing metadata");
+		}
 		return this.metadata.palette;
 	}
 
 	get heatmapCooldown() {
-		if(typeof this.metadata === "undefined")
+		if(typeof this.metadata === "undefined") {
 			throw new Error("Missing metadata");
+		}
 		return this.metadata.heatmapCooldown;
 	}
 
 	get maxStacked() {
-		if(typeof this.metadata === "undefined")
+		if(typeof this.metadata === "undefined") {
 			throw new Error("Missing metadata");
+		}
 		return this.metadata.maxStacked;
 	}
 
 	get canvasCode() {
-		if(typeof this.metadata === "undefined")
+		if(typeof this.metadata === "undefined") {
 			throw new Error("Missing metadata");
+		}
 		return this.metadata.canvasCode;
 	}
 
 	get chatEnabled() {
-		if(typeof this.metadata === "undefined")
+		if(typeof this.metadata === "undefined") {
 			throw new Error("Missing metadata");
+		}
 		return this.metadata.chatEnabled;
 	}
 
 	get chatCharacterLimit() {
-		if(typeof this.metadata === "undefined")
+		if(typeof this.metadata === "undefined") {
 			throw new Error("Missing metadata");
+		}
 		return this.metadata.chatCharacterLimit;
 	}
 
 	get chatBannerText() {
-		if(typeof this.metadata === "undefined")
+		if(typeof this.metadata === "undefined") {
 			throw new Error("Missing metadata");
+		}
 		return this.metadata.chatBannerText;
 	}
 
 	get customEmoji() {
-		if(typeof this.metadata === "undefined")
+		if(typeof this.metadata === "undefined") {
 			throw new Error("Missing metadata");
+		}
 		return this.metadata.customEmoji;
 	}
 
 	get canvas() {
-		if(typeof this.canvasdata === "undefined")
+		if(typeof this.canvasdata === "undefined") {
 			throw new Error("Missing canvas data");
+		}
 		return this.canvasdata;
 	}
 	
 	get heatmap() {
-		if(typeof this.heatmapdata === "undefined")
+		if(typeof this.heatmapdata === "undefined") {
 			throw new Error("Missing heatmap data");
+		}
 		return this.heatmapdata;
 	}
 
 	get virginmap() {
-		if(typeof this.virginmapdata === "undefined")
+		if(typeof this.virginmapdata === "undefined") {
 			throw new Error("Missing virginmap data");
+		}
 		return this.virginmapdata;
 	}
 	
 	get placemap() {
-		if(typeof this.placemapdata === "undefined")
+		if(typeof this.placemapdata === "undefined") {
 			throw new Error("Missing placemap data");
+		}
 		return this.placemapdata;
 	}
 
 	get initialcanvas() {
-		if(typeof this.initialcanvasdata === "undefined")
+		if(typeof this.initialcanvasdata === "undefined") {
 			throw new Error("Missing initialcanvas data");
+		}
 		return this.initialcanvasdata;
 	}
 

@@ -1,20 +1,20 @@
 import { inspect } from "util";
 
-export function isObject<
+export const isObject = function<
 	X extends {}
 >(
 	object: unknown
 ): object is X {
 	return typeof object === "object" && object !== null;
-}
+};
 
-export function isArray(
+export const isArray = function (
 	object: unknown
 ): object is unknown[] {
 	return Array.isArray(object);
-}
+};
 
-export function hasProperty<
+export const hasProperty = function <
 	X extends {}, 
 	Y extends PropertyKey
 >(
@@ -22,9 +22,9 @@ export function hasProperty<
 	property: Y
 ): object is X & Record<Y, unknown> {
 	return Object.prototype.hasOwnProperty.call(object, property);
-}
+};
 
-export async function pipe(stream: NodeJS.ReadableStream, buffer: Uint8Array): Promise<Uint8Array> {
+export const pipe = async function (stream: NodeJS.ReadableStream, buffer: Uint8Array): Promise<Uint8Array> {
 	return await new Promise((resolve, reject) => {
 		let i = 0;
 		stream.on("data", b => {
@@ -37,7 +37,7 @@ export async function pipe(stream: NodeJS.ReadableStream, buffer: Uint8Array): P
 
 		stream.once("end", () => resolve(buffer));
 	});
-}
+};
 
 export class ValidationError extends Error {
 	readonly object;
@@ -49,12 +49,12 @@ export class ValidationError extends Error {
 	}
 }
 
-export function range(start: number, end: number) {
+export const range = function (start: number, end: number) {
 	if(start <= end) {
 		return new Array(end - start).fill(0).map((_, i) => i + start);
 	} else {
 		return new Array(start - end).fill(0).map((_, i) => start - i);
 	}
-}
+};
 
 export const sum = (total: number, next: number) => total + next;

@@ -128,9 +128,6 @@ export declare class Pxls extends EventEmitter {
     private setMetadata;
     private get bufferSources();
     sync(): Promise<void>;
-    /**
-     * @alias saveCanvas
-     */
     save(file: string): Promise<void>;
     private saveBufferColor;
     saveCanvas(file: string): Promise<void>;
@@ -161,20 +158,11 @@ export declare class Pxls extends EventEmitter {
     cropHeatmap(x: number, y: number, width: number, height: number): Uint8Array;
     cropPlacemap(x: number, y: number, width: number, height: number): Uint8Array;
     cropVirginmap(x: number, y: number, width: number, height: number): Uint8Array;
-    /**
-     * @deprecated use `cropCanvas` instead
-     */
     getCroppedCanvas(x: number, y: number, width: number, height: number): Uint8Array;
     static convertBufferToRGBA(buffer: Uint8Array, palette: PxlsColor[]): Uint8Array;
     get rgba(): Uint8Array;
     static cooldownForUserCount(users: number, config?: CooldownOptions): number;
     get currentCooldown(): number;
-    /**
-     * To get the total time to get some stack count, Call this once at every stack stage.
-     * Example for final stack count = 5:
-     * `[0, 1, 2, 3, 4].reduce((cooldown, stackSize) => cooldown + currentCooldownForStackCount(stackSize), 0)`
-     * @returns The time in seconds the stacked pixel count is `availablePixels` before becoming `availablePixels + 1`
-     */
     static cooldownForUserCountAndStackCount(users: number, availablePixels: number, config?: CooldownOptions): number;
     currentCooldownForStackCount(availablePixels: number): number;
 }

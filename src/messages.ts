@@ -161,6 +161,7 @@ export interface ChatMessage {
     id: number;
     author: string;
     date: number;
+	/* eslint-disable-next-line camelcase */
     message_raw: string;
     purge?: Purge;
     badges: Badge[];

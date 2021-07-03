@@ -1,3 +1,5 @@
+/* eslint-disable camelcase  */
+/* eslint-disable @typescript-eslint/camelcase  */
 declare module "color-parse" {
 	type Color = {
 		space: string;
