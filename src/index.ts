@@ -1,11 +1,9 @@
 import * as EventEmitter from "events";
 import { inspect } from "util";
-import { URL } from "url";
 
 import * as should from "should";
 
 import fetch from "node-fetch";
-import color = require("color-parse");
 import * as WebSocket from "ws";
 import sharp = require("sharp");
 
@@ -21,7 +19,14 @@ import {
 	ChatMessageMessage,
 } from "./messages";
 
-import { isObject, hasProperty, pipe, ValidationError, range, sum, wait, doWithTimeout } from "./util";
+import {
+	PxlsColor,
+	Emoji,
+	Metadata,
+	Metadatalike,
+} from "./metadata";	 
+
+import { hasProperty, pipe, ValidationError, range, sum, wait, doWithTimeout } from "./util";
 
 export { 
 	Message, 
@@ -33,110 +38,12 @@ export {
 	NotificationMessage,
 	ChatMessage,
 	ChatMessageMessage,
+	PxlsColor,
+	Emoji,
+	Metadata,
 };
 
 export const TRANSPARENT_PIXEL = 255;
-
-interface PxlsColorlike {
-	name: string;
-	value: string;
-}
-
-export class PxlsColor {
-	public readonly name: string;
-	public readonly values: [number, number, number];
-
-	constructor(object: PxlsColorlike) {
-		this.name = object.name;
-		this.values = color(`#${object.value}`).values;
-	}
-
-	static validate<C extends PxlsColorlike>(color: unknown): color is C {
-		return isObject(color)
-			&& hasProperty(color, "name")
-			&& typeof color.name === "string"
-			&& hasProperty(color, "value")
-			&& typeof color.value === "string";
-	}
-}
-
-interface Emojilike {
-	name: string;
-	emoji: string;
-}
-
-export class Emoji {
-	readonly name: string;
-	readonly url: URL;
-
-	constructor(emoji: Emojilike, base: URL) {
-		this.name = emoji.name;
-		this.url = new URL(emoji.emoji, base);
-	}
-
-	static validate<E extends Emojilike>(emoji: unknown): emoji is E {
-		return isObject(emoji)
-			&& hasProperty(emoji, "name")
-			&& typeof emoji.name === "string"
-			&& hasProperty(emoji, "emoji")
-			&& typeof emoji.emoji === "string";
-	}
-}
-
-interface Metadatalike {
-	width: number;
-	height: number;
-	palette: PxlsColorlike[];
-	heatmapCooldown: number;
-	maxStacked: number;
-	canvasCode: string;
-	chatEnabled: boolean;
-	chatCharacterLimit: number;
-	chatBannerText: string[];
-	customEmoji: Emojilike[];
-}
-
-export interface Metadata {
-	width: number;
-	height: number;
-	palette: PxlsColor[];
-	heatmapCooldown: number;
-	maxStacked: number;
-	canvasCode: string;
-	chatEnabled: boolean;
-	chatCharacterLimit: number;
-	chatBannerText: string[];
-	customEmoji: Emoji[];
-}
-
-export class Metadata {
-	static validate<M extends Metadatalike>(metadata: unknown): metadata is M {
-		return isObject(metadata)
-			&& hasProperty(metadata, "width")
-			&& typeof metadata.width === "number"
-			&& hasProperty(metadata, "height")
-			&& typeof metadata.height === "number"
-			&& hasProperty(metadata, "palette")
-			&& Array.isArray(metadata.palette)
-			&& metadata.palette.every(c => PxlsColor.validate(c))
-			&& hasProperty(metadata, "heatmapCooldown")
-			&& typeof metadata.heatmapCooldown === "number"
-			&& hasProperty(metadata, "maxStacked")
-			&& typeof metadata.maxStacked === "number"
-			&& hasProperty(metadata, "canvasCode")
-			&& typeof metadata.canvasCode === "string"
-			&& hasProperty(metadata, "chatEnabled")
-			&& typeof metadata.chatEnabled === "boolean"
-			&& hasProperty(metadata, "chatCharacterLimit")
-			&& typeof metadata.chatCharacterLimit === "number"
-			&& hasProperty(metadata, "chatBannerText")
-			&& Array.isArray(metadata.chatBannerText)
-			&& metadata.chatBannerText.every(t => typeof t === "string")
-			&& hasProperty(metadata, "customEmoji")
-			&& Array.isArray(metadata.customEmoji)
-			&& metadata.customEmoji.every(e => Emoji.validate(e));
-	}
-}
 
 export interface SyncData {
 	metadata: Metadata;
@@ -468,27 +375,7 @@ export class Pxls extends EventEmitter {
 	}
 
 	private setMetadata(metadata: Metadatalike) {
-		should(metadata.width).be.a.Number().and.not.Infinity().and.not.NaN().and.above(0);
-		should(metadata.height).be.a.Number().and.not.Infinity().and.not.NaN().and.above(0);
-		should(metadata.palette).be.an.Array().and.not.empty();
-		should(metadata.heatmapCooldown).be.a.Number().and.not.Infinity().and.not.NaN().and.aboveOrEqual(0);
-		should(metadata.maxStacked).be.a.Number().and.not.Infinity().and.not.NaN().and.aboveOrEqual(0);
-		should(metadata.canvasCode).be.a.String();
-
-		const emojiBaseUrl = new URL(`https://${this.site}/emoji/`);
-
-		this.metadata = {
-			"width": metadata.width,
-			"height": metadata.height,
-			"palette": metadata.palette.map(c => new PxlsColor(c)),
-			"heatmapCooldown": metadata.heatmapCooldown,
-			"maxStacked": metadata.maxStacked,
-			"canvasCode": metadata.canvasCode,
-			"chatEnabled": metadata.chatEnabled,
-			"chatCharacterLimit": metadata.chatCharacterLimit,
-			"chatBannerText": metadata.chatBannerText,
-			"customEmoji": metadata.customEmoji.map(e => new Emoji(e, emojiBaseUrl)),
-		};
+		this.metadata = new Metadata(metadata, this.site);
 
 		if(typeof this.heatmapCooldownInterval !== "undefined") {
 			clearInterval(this.heatmapCooldownInterval);

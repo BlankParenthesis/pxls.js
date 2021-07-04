@@ -1,56 +1,9 @@
 /// <reference types="node" />
 import * as EventEmitter from "events";
-import { URL } from "url";
 import { Message, Pixel, PixelsMessage, UsersMessage, AlertMessage, Notification, NotificationMessage, ChatMessage, ChatMessageMessage } from "./messages";
-export { Message, Pixel, PixelsMessage, UsersMessage, AlertMessage, Notification, NotificationMessage, ChatMessage, ChatMessageMessage, };
+import { PxlsColor, Emoji, Metadata } from "./metadata";
+export { Message, Pixel, PixelsMessage, UsersMessage, AlertMessage, Notification, NotificationMessage, ChatMessage, ChatMessageMessage, PxlsColor, Emoji, Metadata, };
 export declare const TRANSPARENT_PIXEL = 255;
-interface PxlsColorlike {
-    name: string;
-    value: string;
-}
-export declare class PxlsColor {
-    readonly name: string;
-    readonly values: [number, number, number];
-    constructor(object: PxlsColorlike);
-    static validate<C extends PxlsColorlike>(color: unknown): color is C;
-}
-interface Emojilike {
-    name: string;
-    emoji: string;
-}
-export declare class Emoji {
-    readonly name: string;
-    readonly url: URL;
-    constructor(emoji: Emojilike, base: URL);
-    static validate<E extends Emojilike>(emoji: unknown): emoji is E;
-}
-interface Metadatalike {
-    width: number;
-    height: number;
-    palette: PxlsColorlike[];
-    heatmapCooldown: number;
-    maxStacked: number;
-    canvasCode: string;
-    chatEnabled: boolean;
-    chatCharacterLimit: number;
-    chatBannerText: string[];
-    customEmoji: Emojilike[];
-}
-export interface Metadata {
-    width: number;
-    height: number;
-    palette: PxlsColor[];
-    heatmapCooldown: number;
-    maxStacked: number;
-    canvasCode: string;
-    chatEnabled: boolean;
-    chatCharacterLimit: number;
-    chatBannerText: string[];
-    customEmoji: Emoji[];
-}
-export declare class Metadata {
-    static validate<M extends Metadatalike>(metadata: unknown): metadata is M;
-}
 export interface SyncData {
     metadata: Metadata;
     canvas?: Uint8Array;
