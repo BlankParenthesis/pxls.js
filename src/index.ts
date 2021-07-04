@@ -308,7 +308,6 @@ export class Pxls extends EventEmitter {
 		}
 
 		return await new Promise((resolve, reject) => {
-			// TODO: reuse this is possible
 			const ws = this.wsVariable = new WebSocket(`wss://${this.site}/ws`);
 
 			const reload = async () => {
