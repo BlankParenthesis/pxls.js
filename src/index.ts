@@ -625,7 +625,7 @@ export class Pxls extends EventEmitter {
 		return this.initialcanvasdata;
 	}
 
-	private cropBuffer(
+	private static cropBuffer(
 		buffer: Uint8Array, 
 		bufferWidth: number, 
 		bufferHeight: number, 
@@ -643,28 +643,27 @@ export class Pxls extends EventEmitter {
 		(y + height).should.within(0, bufferHeight);
 
 		const croppedBuffer = new Uint8Array(width * height);
-		const canvasWidth = this.width;
 		for(let yo = 0; yo < height; yo++) {
-			const i = ((yo + y) * canvasWidth) + x;
+			const i = ((yo + y) * bufferWidth) + x;
 			croppedBuffer.set(buffer.slice(i, i + width), yo * width);
 		}
 		return croppedBuffer;
 	}
 
 	cropCanvas(x: number, y: number, width: number, height: number) {
-		return this.cropBuffer(this.canvas, this.width, this.height, x, y, width, height);
+		return Pxls.cropBuffer(this.canvas, this.width, this.height, x, y, width, height);
 	}
 
 	cropHeatmap(x: number, y: number, width: number, height: number) {
-		return this.cropBuffer(this.heatmap, this.width, this.height, x, y, width, height);
+		return Pxls.cropBuffer(this.heatmap, this.width, this.height, x, y, width, height);
 	}
 
 	cropPlacemap(x: number, y: number, width: number, height: number) {
-		return this.cropBuffer(this.placemap, this.width, this.height, x, y, width, height);
+		return Pxls.cropBuffer(this.placemap, this.width, this.height, x, y, width, height);
 	}
 
 	cropVirginmap(x: number, y: number, width: number, height: number) {
-		return this.cropBuffer(this.virginmap, this.width, this.height, x, y, width, height);
+		return Pxls.cropBuffer(this.virginmap, this.width, this.height, x, y, width, height);
 	}
 
 	// TODO: add cropIntialCanvas

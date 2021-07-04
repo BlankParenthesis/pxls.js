@@ -106,7 +106,7 @@ export declare class Pxls extends EventEmitter {
     get virginmap(): Uint8Array;
     get placemap(): Uint8Array;
     get initialcanvas(): Uint8Array;
-    private cropBuffer;
+    private static cropBuffer;
     cropCanvas(x: number, y: number, width: number, height: number): Uint8Array;
     cropHeatmap(x: number, y: number, width: number, height: number): Uint8Array;
     cropPlacemap(x: number, y: number, width: number, height: number): Uint8Array;
