@@ -217,7 +217,7 @@ export class Pxls extends EventEmitter {
 		}
 	}
 
-	// setup the websocket
+	// TODO: make this nicer — it's too big
 	private async connectWS(): Promise<void> {
 		if(typeof this.wsVariable !== "undefined") {
 			if(![WebSocket.CLOSING, WebSocket.CLOSED].includes(this.wsVariable.readyState as any)) {
@@ -359,7 +359,7 @@ export class Pxls extends EventEmitter {
 			this.ws.removeAllListeners("close");
 			
 			if(typeof this.wsHeartbeat !== "undefined") {
-				clearTimeout(this.wsHeartbeat);
+				clearInterval(this.wsHeartbeat);
 			}
 
 			if(this.ws.readyState !== WebSocket.CLOSED) {
@@ -666,6 +666,8 @@ export class Pxls extends EventEmitter {
 	cropVirginmap(x: number, y: number, width: number, height: number) {
 		return this.cropBuffer(this.virginmap, this.width, this.height, x, y, width, height);
 	}
+
+	// TODO: add cropIntialCanvas
 
 	/**
 	 * @deprecated use `cropCanvas` instead
