@@ -21,9 +21,7 @@ import {
 	ChatMessageMessage,
 } from "./messages";
 
-import { isObject, hasProperty, pipe, ValidationError, range, sum } from "./util";
-
-const wait = (t: number) => new Promise(r => setTimeout(r, t));
+import { isObject, hasProperty, pipe, ValidationError, range, sum, wait, doWithTimeout } from "./util";
 
 export { 
 	Message, 
@@ -210,6 +208,7 @@ const DEFAULT_OPTIONS = {
 
 export class Pxls extends EventEmitter {
 	readonly site: string;
+	private disconnected = true;
 	private synced = false;
 	private readonly pixelBuffer: Pixel[] = [];
 	private wsVariable?: WebSocket;
@@ -227,7 +226,7 @@ export class Pxls extends EventEmitter {
 	readonly notifications: Notification[] = [];
 	private readonly notificationBuffer: Notification[] = [];
 
-	private heartbeatTimeout?: NodeJS.Timeout;
+	private wsHeartbeat?: NodeJS.Timeout;
 
 	private heatmapCooldownInterval?: NodeJS.Timeout;
 
@@ -265,8 +264,20 @@ export class Pxls extends EventEmitter {
 
 	async connect() {
 		this.synced = false;
-		await this.connectWS();
-		await this.sync();
+
+		// this variable represents the desired state more than the current state.
+		this.disconnected = false;
+
+		while(!this.synced && !this.disconnected) {
+			await this.disconnect();
+
+			try {
+				await this.connectWS();
+				await this.sync();
+			} catch(e) {
+				await wait(30000);
+			}
+		}
 		this.emit("ready");
 	}
 
@@ -310,44 +321,29 @@ export class Pxls extends EventEmitter {
 		return await new Promise((resolve, reject) => {
 			const ws = this.wsVariable = new WebSocket(`wss://${this.site}/ws`);
 
-			const reload = async () => {
-				if(ws.readyState !== WebSocket.CLOSED) {
-					ws.close();
-				}
-
-				if(typeof this.heartbeatTimeout !== "undefined") {
-					clearTimeout(this.heartbeatTimeout);
-				}
-	
-				this.synced = false;
-
-				while(!this.synced) {
-					try {
-						await this.connectWS();
-						await this.sync();
-						this.emit("ready");
-					} catch(e) {
-						await wait(30000);
-					}
-				}
-			};
-
 			const HEARTBEAT_TIMEOUT = 30000 + 1000; // network timeout plus a second
 
-			const heartbeat = () => {
-				if(typeof this.heartbeatTimeout !== "undefined") {
-					clearTimeout(this.heartbeatTimeout);
-				}
-
-				this.heartbeatTimeout = setTimeout(() => ws.terminate(), HEARTBEAT_TIMEOUT);
-			};
-	
 			this.ws.once("open", () => {
 				ws.off("error", reject);
 				ws.off("close", reject);
 
-				heartbeat();
-				ws.on("ping", heartbeat);
+				if(this.wsHeartbeat !== undefined) {
+					clearInterval(this.wsHeartbeat);
+				}
+				this.wsHeartbeat = setInterval(async () => {
+					try {
+						ws.ping();
+
+						await doWithTimeout(
+							() => new Promise(resolve => {
+								ws.once("pong", resolve);
+							}),
+							HEARTBEAT_TIMEOUT,
+						);
+					} catch(timeout) {
+						ws.terminate();
+					}
+				}, HEARTBEAT_TIMEOUT);
 
 				ws.on("message", data => {
 					const message: unknown = JSON.parse(data.toString());
@@ -435,7 +431,7 @@ export class Pxls extends EventEmitter {
 				});
 				ws.once("close", () => {
 					this.emit("disconnect");
-					reload();
+					this.connect();
 				});
 				resolve();
 			});
@@ -445,23 +441,30 @@ export class Pxls extends EventEmitter {
 		});
 	}
 
-	async restartWS() {
-		if(this.ws.readyState === WebSocket.CLOSED) {
-			await this.connectWS();
-		} else {
-			// the restart function will be called again when the socket is fully closed.
-			// TODO: this function should await for that to actually happen.
-			this.ws.close();
-		}
-	}
-
-	async closeWS() {
-		this.ws.removeAllListeners("error");
-		this.ws.removeAllListeners("close");
-		this.ws.close();
-		// The moment we disconnect, our data becomes potentially outdated.
+	// FIXME: calling this multiple times before the first one resolves results
+	// in only once call ever resolving
+	async disconnect() {
 		this.synced = false;
-		// TODO: this should probably wait for the socket actually being closed if possible.
+		this.disconnected = true;
+
+		if(typeof this.wsVariable !== "undefined") {
+			this.ws.removeAllListeners("error");
+			this.ws.removeAllListeners("close");
+			
+			if(typeof this.wsHeartbeat !== "undefined") {
+				clearTimeout(this.wsHeartbeat);
+			}
+
+			if(this.ws.readyState !== WebSocket.CLOSED) {
+				await new Promise(resolve => {
+					this.ws.once("close", resolve);
+					this.ws.close();
+				});
+			}
+
+			this.wsVariable = undefined;
+			this.emit("disconnect");
+		}
 	}
 
 	private setMetadata(metadata: Metadatalike) {

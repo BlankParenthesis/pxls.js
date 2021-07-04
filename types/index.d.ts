@@ -102,6 +102,7 @@ export interface PxlsOptions {
 }
 export declare class Pxls extends EventEmitter {
     readonly site: string;
+    private disconnected;
     private synced;
     private readonly pixelBuffer;
     private wsVariable?;
@@ -115,7 +116,7 @@ export declare class Pxls extends EventEmitter {
     private initialcanvasdata?;
     readonly notifications: Notification[];
     private readonly notificationBuffer;
-    private heartbeatTimeout?;
+    private wsHeartbeat?;
     private heatmapCooldownInterval?;
     private cooldownConfig;
     constructor(optionsOrSite?: string | PxlsOptions);
@@ -123,8 +124,7 @@ export declare class Pxls extends EventEmitter {
     connect(): Promise<void>;
     private processPixel;
     private connectWS;
-    restartWS(): Promise<void>;
-    closeWS(): Promise<void>;
+    disconnect(): Promise<void>;
     private setMetadata;
     private get bufferSources();
     sync(): Promise<void>;

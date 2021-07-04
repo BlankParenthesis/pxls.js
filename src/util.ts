@@ -58,3 +58,15 @@ export const range = function (start: number, end: number) {
 };
 
 export const sum = (total: number, next: number) => total + next;
+
+export const wait = (t: number) => new Promise(r => setTimeout(r, t));
+
+export const doWithTimeout = async function<X>(
+	action: () => Promise<X>, 
+	timeout: number,
+): Promise<X> {
+	return await Promise.race([
+		new Promise((_, reject) => setTimeout(reject, timeout)) as Promise<never>,
+		action(),
+	]);
+};
