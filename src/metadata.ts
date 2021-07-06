@@ -1,7 +1,6 @@
 import { URL } from "url";
 
 import color = require("color-parse");
-import * as should from "should";
 import * as is from "check-types";
 
 import { hasTypedProperty } from "./util";
@@ -74,13 +73,6 @@ export class Metadata {
 	readonly customEmoji: Emoji[];
 
 	constructor(metadata: Metadatalike, site: string) {
-		should(metadata.width).be.a.Number().and.not.Infinity().and.not.NaN().and.above(0);
-		should(metadata.height).be.a.Number().and.not.Infinity().and.not.NaN().and.above(0);
-		should(metadata.palette).be.an.Array().and.not.empty();
-		should(metadata.heatmapCooldown).be.a.Number().and.not.Infinity().and.not.NaN().and.aboveOrEqual(0);
-		should(metadata.maxStacked).be.a.Number().and.not.Infinity().and.not.NaN().and.aboveOrEqual(0);
-		should(metadata.canvasCode).be.a.String();
-
 		const emojiBaseUrl = new URL(`https://${site}/emoji/`);
 
 		this.width = metadata.width;

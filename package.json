@@ -1,6 +1,6 @@
 {
 	"name": "@blankparenthesis/pxlsspace",
-	"version": "2.7.0",
+	"version": "2.7.1",
 	"description": "Interact with pxls.space based websites easily",
 	"keywords": [
 		"pxls",
@@ -45,14 +45,12 @@
 		"color-parse": "^1.0.0",
 		"node-fetch": "^2.6.1",
 		"sharp": "^0.28.3",
-		"should": "^13.0.0",
 		"ws": "^7.0.0"
 	},
 	"devDependencies": {
 		"@types/check-types": "^7.3.2",
 		"@types/node-fetch": "^2.5.10",
 		"@types/sharp": "^0.28.3",
-		"@types/should": "^13.0.0",
 		"@types/ws": "^7.4.4",
 		"@typescript-eslint/parser": "^4.26.0",
 		"eslint": ">4.0.0",

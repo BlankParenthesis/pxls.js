@@ -1,8 +1,6 @@
 import * as EventEmitter from "events";
 import { inspect } from "util";
 
-import * as should from "should";
-
 import fetch from "node-fetch";
 import * as WebSocket from "ws";
 import sharp = require("sharp");
@@ -191,12 +189,12 @@ export class Pxls extends EventEmitter {
 	}
 
 	private processPixel(pixel: Pixel) {
-		if(pixel.color !== TRANSPARENT_PIXEL) {
-			try {
-				should(this.palette[pixel.color]).not.be.undefined();
-			} catch(e) {
-				return;
-			}
+		if(!(pixel.color in this.palette) && pixel.color !== TRANSPARENT_PIXEL) {
+			this.emit("error", new Error(
+				`Tried to process pixel of unknown color: ${pixel.color}`
+			));
+
+			return;
 		}
 		
 		const address = this.address(pixel.x, pixel.y);
