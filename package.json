@@ -1,6 +1,6 @@
 {
 	"name": "@blankparenthesis/pxlsspace",
-	"version": "2.6.6",
+	"version": "2.6.7",
 	"description": "Interact with pxls.space based websites easily",
 	"keywords": [
 		"pxls",
@@ -41,6 +41,7 @@
 		"url": "https://gitlab.com/nbsp_nbsp/pxls.js"
 	},
 	"dependencies": {
+		"check-types": "^11.1.2",
 		"color-parse": "^1.0.0",
 		"node-fetch": "^2.6.1",
 		"sharp": "^0.28.3",
@@ -48,6 +49,7 @@
 		"ws": "^7.0.0"
 	},
 	"devDependencies": {
+		"@types/check-types": "^7.3.2",
 		"@types/node-fetch": "^2.5.10",
 		"@types/sharp": "^0.28.3",
 		"@types/should": "^13.0.0",

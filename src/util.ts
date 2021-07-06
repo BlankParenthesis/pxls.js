@@ -1,18 +1,5 @@
 import { inspect } from "util";
-
-export const isObject = function<
-	X extends {}
->(
-	object: unknown
-): object is X {
-	return typeof object === "object" && object !== null;
-};
-
-export const isArray = function (
-	object: unknown
-): object is unknown[] {
-	return Array.isArray(object);
-};
+import * as is from "check-types";
 
 export const hasProperty = function <
 	X extends {}, 
@@ -23,6 +10,36 @@ export const hasProperty = function <
 ): object is X & Record<Y, unknown> {
 	return Object.prototype.hasOwnProperty.call(object, property);
 };
+
+// eslint doesn't like this indent style. 
+// it suggest one that seems wholely inferior imo.
+/* eslint-disable indent */
+export const hasTypedProperty = <
+	X extends {}, 
+	Y extends PropertyKey,
+	T,
+>(
+	object: X, 
+	property: Y, 
+	guard: (_: unknown) => _ is T
+): object is X & Record<Y, T> => {
+	return hasProperty(object, property) && guard(object[property]);
+};
+
+export const hasOptionalTypedProperty = <
+	X extends {}, 
+	Y extends PropertyKey,
+	T,
+>(
+	object: X, 
+	property: Y, 
+	guard: (_: unknown) => _ is T
+): object is X & Record<Y, T> => {
+	return !hasProperty(object, property)
+		|| hasTypedProperty(object, property, is.undefined)
+		|| hasTypedProperty(object, property, guard);
+};
+/* eslint-enable indent */
 
 export const pipe = async function (stream: NodeJS.ReadableStream, buffer: Uint8Array): Promise<Uint8Array> {
 	return await new Promise((resolve, reject) => {

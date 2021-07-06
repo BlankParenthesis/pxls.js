@@ -6,6 +6,7 @@ import * as should from "should";
 import fetch from "node-fetch";
 import * as WebSocket from "ws";
 import sharp = require("sharp");
+import * as is from "check-types";
 
 import { 
 	Message, 
@@ -145,15 +146,15 @@ export class Pxls extends EventEmitter {
 
 		const options = { ...DEFAULT_OPTIONS };
 
-		if(typeof optionsOrSite === "object") {
+		if(is.object(optionsOrSite)) {
 			for(const [key, value] of Object.entries(optionsOrSite)) {
 				if(hasProperty(optionsOrSite, key) && hasProperty(options, key)) {
 					options[key] = value;
 				}
 			}
-		} else if(typeof optionsOrSite === "string") {
+		} else if(is.string(optionsOrSite)) {
 			options.site = optionsOrSite;
-		} else if(typeof optionsOrSite !== "undefined") {
+		} else if(!is.undefined(optionsOrSite)) {
 			throw new Error(`Invalid construction option: ${optionsOrSite}`);
 		}
 
@@ -163,7 +164,7 @@ export class Pxls extends EventEmitter {
 	}
 
 	private get ws(): WebSocket {
-		if(typeof this.wsVariable === "undefined") {
+		if(is.undefined(this.wsVariable)) {
 			throw new Error("Expected websocket to be defined");
 		}
 
@@ -293,7 +294,7 @@ export class Pxls extends EventEmitter {
 	}
 
 	private async connectWS(): Promise<void> {
-		if(typeof this.wsVariable !== "undefined") {
+		if(!is.undefined(this.wsVariable)) {
 			if(![WebSocket.CLOSING, WebSocket.CLOSED].includes(this.wsVariable.readyState as any)) {
 				throw new Error("Cannot connect new websocket: already connected");
 			}
@@ -363,11 +364,11 @@ export class Pxls extends EventEmitter {
 		this.synced = false;
 		this.disconnected = true;
 
-		if(typeof this.wsVariable !== "undefined") {
+		if(!is.undefined(this.wsVariable)) {
 			this.ws.removeAllListeners("error");
 			this.ws.removeAllListeners("close");
 			
-			if(typeof this.wsHeartbeat !== "undefined") {
+			if(!is.undefined(this.wsHeartbeat)) {
 				clearInterval(this.wsHeartbeat);
 			}
 
@@ -386,7 +387,7 @@ export class Pxls extends EventEmitter {
 	private setMetadata(metadata: Metadatalike) {
 		this.metadataVariable = new Metadata(metadata, this.site);
 
-		if(typeof this.heatmapCooldownInterval !== "undefined") {
+		if(!is.undefined(this.heatmapCooldownInterval)) {
 			clearInterval(this.heatmapCooldownInterval);
 		}
 
@@ -523,14 +524,14 @@ export class Pxls extends EventEmitter {
 	}
 
 	get users() {
-		if(typeof this.userCount === "undefined") {
+		if(is.undefined(this.userCount)) {
 			throw new Error("User count is unknown");
 		}
 		return this.userCount;
 	}
 
 	private get metadata() {
-		if(typeof this.metadataVariable === "undefined") {
+		if(is.undefined(this.metadataVariable)) {
 			throw new Error("Missing metadata");
 		}
 
@@ -578,35 +579,35 @@ export class Pxls extends EventEmitter {
 	}
 
 	get canvas() {
-		if(typeof this.canvasdata === "undefined") {
+		if(is.undefined(this.canvasdata)) {
 			throw new Error("Missing canvas data");
 		}
 		return this.canvasdata;
 	}
 	
 	get heatmap() {
-		if(typeof this.heatmapdata === "undefined") {
+		if(is.undefined(this.heatmapdata)) {
 			throw new Error("Missing heatmap data");
 		}
 		return this.heatmapdata;
 	}
 
 	get virginmap() {
-		if(typeof this.virginmapdata === "undefined") {
+		if(is.undefined(this.virginmapdata)) {
 			throw new Error("Missing virginmap data");
 		}
 		return this.virginmapdata;
 	}
 	
 	get placemap() {
-		if(typeof this.placemapdata === "undefined") {
+		if(is.undefined(this.placemapdata)) {
 			throw new Error("Missing placemap data");
 		}
 		return this.placemapdata;
 	}
 
 	get initialcanvas() {
-		if(typeof this.initialcanvasdata === "undefined") {
+		if(is.undefined(this.initialcanvasdata)) {
 			throw new Error("Missing initialcanvas data");
 		}
 		return this.initialcanvasdata;

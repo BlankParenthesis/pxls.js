@@ -2,8 +2,9 @@ import { URL } from "url";
 
 import color = require("color-parse");
 import * as should from "should";
+import * as is from "check-types";
 
-import { isObject, hasProperty } from "./util";
+import { hasTypedProperty } from "./util";
 
 export interface PxlsColorlike {
 	name: string;
@@ -20,11 +21,9 @@ export class PxlsColor {
 	}
 
 	static validate<C extends PxlsColorlike>(color: unknown): color is C {
-		return isObject(color)
-			&& hasProperty(color, "name")
-			&& typeof color.name === "string"
-			&& hasProperty(color, "value")
-			&& typeof color.value === "string";
+		return is.object(color)
+			&& hasTypedProperty(color, "name", is.string)
+			&& hasTypedProperty(color, "value", is.string);
 	}
 }
 
@@ -43,11 +42,9 @@ export class Emoji {
 	}
 
 	static validate<E extends Emojilike>(emoji: unknown): emoji is E {
-		return isObject(emoji)
-			&& hasProperty(emoji, "name")
-			&& typeof emoji.name === "string"
-			&& hasProperty(emoji, "emoji")
-			&& typeof emoji.emoji === "string";
+		return is.object(emoji)
+			&& hasTypedProperty(emoji, "name", is.string)
+			&& hasTypedProperty(emoji, "emoji", is.string);
 	}
 }
 
@@ -99,29 +96,19 @@ export class Metadata {
 	}
 
 	static validate<M extends Metadatalike>(metadata: unknown): metadata is M {
-		return isObject(metadata)
-			&& hasProperty(metadata, "width")
-			&& typeof metadata.width === "number"
-			&& hasProperty(metadata, "height")
-			&& typeof metadata.height === "number"
-			&& hasProperty(metadata, "palette")
-			&& Array.isArray(metadata.palette)
-			&& metadata.palette.every(c => PxlsColor.validate(c))
-			&& hasProperty(metadata, "heatmapCooldown")
-			&& typeof metadata.heatmapCooldown === "number"
-			&& hasProperty(metadata, "maxStacked")
-			&& typeof metadata.maxStacked === "number"
-			&& hasProperty(metadata, "canvasCode")
-			&& typeof metadata.canvasCode === "string"
-			&& hasProperty(metadata, "chatEnabled")
-			&& typeof metadata.chatEnabled === "boolean"
-			&& hasProperty(metadata, "chatCharacterLimit")
-			&& typeof metadata.chatCharacterLimit === "number"
-			&& hasProperty(metadata, "chatBannerText")
-			&& Array.isArray(metadata.chatBannerText)
-			&& metadata.chatBannerText.every(t => typeof t === "string")
-			&& hasProperty(metadata, "customEmoji")
-			&& Array.isArray(metadata.customEmoji)
-			&& metadata.customEmoji.every(e => Emoji.validate(e));
+		return is.object(metadata)
+			&& hasTypedProperty(metadata, "width", is.number)
+			&& hasTypedProperty(metadata, "height", is.number)
+			&& hasTypedProperty(metadata, "palette", is.array)
+			&& metadata.palette.every(PxlsColor.validate)
+			&& hasTypedProperty(metadata, "heatmapCooldown", is.number)
+			&& hasTypedProperty(metadata, "maxStacked", is.number)
+			&& hasTypedProperty(metadata, "canvasCode", is.string)
+			&& hasTypedProperty(metadata, "chatEnabled", is.boolean)
+			&& hasTypedProperty(metadata, "chatCharacterLimit", is.number)
+			&& hasTypedProperty(metadata, "chatBannerText", is.array)
+			&& metadata.chatBannerText.every(is.string)
+			&& hasTypedProperty(metadata, "customEmoji", is.array)
+			&& metadata.customEmoji.every(Emoji.validate);
 	}
 }
