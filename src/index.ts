@@ -617,28 +617,44 @@ export class Pxls extends EventEmitter {
 		return this.initialcanvasdata;
 	}
 
-	private static cropBuffer(
+	static cropBuffer(
 		buffer: Uint8Array, 
 		bufferWidth: number, 
 		bufferHeight: number, 
 		x: number, 
 		y: number, 
 		width: number, 
-		height: number,
+		height: number, 
+		blankFill: number = TRANSPARENT_PIXEL,
 	) {
-		(bufferWidth * bufferHeight).should.be.exactly(buffer.length);
-		x.should.within(0, bufferWidth);
-		y.should.within(0, bufferHeight);
-		width.should.within(0, bufferWidth);
-		height.should.within(0, bufferHeight);
-		(x + width).should.within(0, bufferWidth);
-		(y + height).should.within(0, bufferHeight);
+		if(buffer.length !== bufferWidth * bufferHeight) {
+			throw new Error("Invalid buffer size specified");
+		}
+
+		// use only negative offsets (and make them positive)
+		const putOffsetX = Math.max(-x, 0);
+		const putOffsetY = Math.max(-y, 0);
+		
+		// use only positive offsets
+		const takeOffsetX = Math.max(x, 0);
+		const takeOffsetY = Math.max(y, 0);
+
+		const availableWidth = bufferWidth - takeOffsetX;
+		const availableHeight = bufferHeight - takeOffsetY;
+
+		const croppedDataWidth = Math.min(width - putOffsetX, availableWidth);
+		const croppedDataHeight = Math.min(height - putOffsetY, availableHeight);
 
 		const croppedBuffer = new Uint8Array(width * height);
-		for(let yo = 0; yo < height; yo++) {
-			const i = ((yo + y) * bufferWidth) + x;
-			croppedBuffer.set(buffer.slice(i, i + width), yo * width);
+		croppedBuffer.fill(blankFill);
+
+		for(let y = 0; y < croppedDataHeight; y++) {
+			const takeLocation = (y + takeOffsetY) * bufferWidth + takeOffsetX;
+			const putLocation = (y + putOffsetY) * width + putOffsetX;
+			const row = buffer.subarray(takeLocation, takeLocation + croppedDataWidth);
+			croppedBuffer.set(row, putLocation);
 		}
+
 		return croppedBuffer;
 	}
 
