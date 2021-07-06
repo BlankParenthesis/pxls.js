@@ -120,7 +120,8 @@ export class Pxls extends EventEmitter {
 	private readonly pixelBuffer: Pixel[] = [];
 	private wsVariable?: WebSocket;
 
-	private metadata?: Metadata;
+	// TODO: think of a better suffix for `get` proxied data — Variable is not great
+	private metadataVariable?: Metadata;
 	private userCount?: number;
 
 	private readonly bufferRestriction: Set<BufferType>;
@@ -383,7 +384,7 @@ export class Pxls extends EventEmitter {
 	}
 
 	private setMetadata(metadata: Metadatalike) {
-		this.metadata = new Metadata(metadata, this.site);
+		this.metadataVariable = new Metadata(metadata, this.site);
 
 		if(typeof this.heatmapCooldownInterval !== "undefined") {
 			clearInterval(this.heatmapCooldownInterval);
@@ -528,73 +529,51 @@ export class Pxls extends EventEmitter {
 		return this.userCount;
 	}
 
-	get width() {
-		if(typeof this.metadata === "undefined") {
+	private get metadata() {
+		if(typeof this.metadataVariable === "undefined") {
 			throw new Error("Missing metadata");
 		}
+
+		return this.metadataVariable;
+	}
+
+	get width() {
 		return this.metadata.width;
 	}
 
 	get height() {
-		if(typeof this.metadata === "undefined") {
-			throw new Error("Missing metadata");
-		}
 		return this.metadata.height;
 	}
 
 	get palette() {
-		if(typeof this.metadata === "undefined") {
-			throw new Error("Missing metadata");
-		}
 		return this.metadata.palette;
 	}
 
 	get heatmapCooldown() {
-		if(typeof this.metadata === "undefined") {
-			throw new Error("Missing metadata");
-		}
 		return this.metadata.heatmapCooldown;
 	}
 
 	get maxStacked() {
-		if(typeof this.metadata === "undefined") {
-			throw new Error("Missing metadata");
-		}
 		return this.metadata.maxStacked;
 	}
 
 	get canvasCode() {
-		if(typeof this.metadata === "undefined") {
-			throw new Error("Missing metadata");
-		}
 		return this.metadata.canvasCode;
 	}
 
 	get chatEnabled() {
-		if(typeof this.metadata === "undefined") {
-			throw new Error("Missing metadata");
-		}
 		return this.metadata.chatEnabled;
 	}
 
 	get chatCharacterLimit() {
-		if(typeof this.metadata === "undefined") {
-			throw new Error("Missing metadata");
-		}
 		return this.metadata.chatCharacterLimit;
 	}
 
 	get chatBannerText() {
-		if(typeof this.metadata === "undefined") {
-			throw new Error("Missing metadata");
-		}
 		return this.metadata.chatBannerText;
 	}
 
 	get customEmoji() {
-		if(typeof this.metadata === "undefined") {
-			throw new Error("Missing metadata");
-		}
 		return this.metadata.customEmoji;
 	}
 
