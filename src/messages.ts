@@ -13,8 +13,6 @@ export class Message {
 	}
 }
 
-// TODO: for all message types, verify that `type` has the correct value
-
 export interface Pixel {
 	x: number;
 	y: number;
@@ -31,13 +29,14 @@ export class Pixel {
 }
 
 export interface PixelsMessage extends Message {
-	type: "pixels";
+	type: "pixel";
 	pixels: Pixel[];
 }
 
 export class PixelsMessage {
 	static validate<M extends PixelsMessage>(message: Message): message is M {
-		return hasTypedProperty(message, "pixels", is.array)
+		return message.type === "pixel"
+			&& hasTypedProperty(message, "pixels", is.array)
 			&& message.pixels.every(Pixel.validate);
 	}
 }
@@ -49,18 +48,21 @@ export interface UsersMessage extends Message {
 
 export class UsersMessage {
 	static validate<M extends UsersMessage>(message: Message): message is M {
-		return hasTypedProperty(message, "count", is.number);
+		return message.type === "users"
+			&& hasTypedProperty(message, "count", is.number);
 	}
 }
 
 export interface AlertMessage extends Message {
+	type: "alert";
 	sender: string;
 	message: string;
 }
 
 export class AlertMessage {
 	static validate<M extends AlertMessage>(message: Message): message is M {
-		return hasTypedProperty(message, "sender", is.string)
+		return message.type === "alert"
+			&& hasTypedProperty(message, "sender", is.string)
 			&& hasTypedProperty(message, "message", is.string);
 	}
 }
@@ -86,12 +88,14 @@ export class Notification {
 }
 
 export interface NotificationMessage extends Message {
+	type: "notification";
 	notification: Notification;
 }
 
 export class NotificationMessage {
 	static validate<M extends NotificationMessage>(message: Message): message is M {
-		return hasTypedProperty(message, "notification", Notification.validate);
+		return message.type === "notification"
+			&& hasTypedProperty(message, "notification", Notification.validate);
 	}
 }
 
@@ -156,27 +160,29 @@ export interface ChatMessage {
 }
 
 export class ChatMessage {
-	static validate<M extends ChatMessage>(notification: unknown): notification is M {
-		return is.object(notification)
-			&& hasTypedProperty(notification, "id", is.number)
-			&& hasTypedProperty(notification, "author", is.string)
-			&& hasTypedProperty(notification, "date", is.number)
-			&& hasTypedProperty(notification, "message_raw", is.string)
-			&& hasOptionalTypedProperty(notification, "purge", Purge.validate)
-			&& hasTypedProperty(notification, "badges", is.array)
-			&& notification.badges.every(Badge.validate)
-			&& hasTypedProperty(notification, "authorNameColor", is.number)
-			&& hasOptionalTypedProperty(notification, "authorWasShadowBanned", is.boolean)
-			&& hasOptionalTypedProperty(notification, "strippedFaction", StrippedFaction.validate);
+	static validate<M extends ChatMessage>(message: unknown): message is M {
+		return is.object(message)
+			&& hasTypedProperty(message, "id", is.number)
+			&& hasTypedProperty(message, "author", is.string)
+			&& hasTypedProperty(message, "date", is.number)
+			&& hasTypedProperty(message, "message_raw", is.string)
+			&& hasOptionalTypedProperty(message, "purge", Purge.validate)
+			&& hasTypedProperty(message, "badges", is.array)
+			&& message.badges.every(Badge.validate)
+			&& hasTypedProperty(message, "authorNameColor", is.number)
+			&& hasOptionalTypedProperty(message, "authorWasShadowBanned", is.boolean)
+			&& hasOptionalTypedProperty(message, "strippedFaction", StrippedFaction.validate);
 	}
 }
 
 export interface ChatMessageMessage extends Message {
+	type: "chat_message";
 	message: ChatMessage;
 }
 
 export class ChatMessageMessage {
 	static validate<M extends ChatMessageMessage>(message: Message): message is M {
-		return hasTypedProperty(message, "message", ChatMessage.validate);
+		return message.type === "chat_message"
+			&& hasTypedProperty(message, "message", ChatMessage.validate);
 	}
 }
