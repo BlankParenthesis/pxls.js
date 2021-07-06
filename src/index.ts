@@ -714,7 +714,7 @@ export class Pxls extends EventEmitter {
 		availablePixels: number,
 		config: CooldownOptions = DEFAULT_OPTIONS.cooldownConfig
 	) {
-		const cooldown = Pxls.cooldownForUserCount(users);
+		const cooldown = Pxls.cooldownForUserCount(users, config);
 	
 		if(availablePixels < 0) {
 			return 0;
