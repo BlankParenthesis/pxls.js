@@ -665,8 +665,10 @@ export class Pxls extends EventEmitter {
 	cropVirginmap(x: number, y: number, width: number, height: number) {
 		return Pxls.cropBuffer(this.virginmap, this.width, this.height, x, y, width, height);
 	}
-
-	// TODO: add cropIntialCanvas
+	
+	cropInitialCanvas(x: number, y: number, width: number, height: number) {
+		return Pxls.cropBuffer(this.initialcanvas, this.width, this.height, x, y, width, height);
+	}
 
 	/**
 	 * @deprecated use `cropCanvas` instead
