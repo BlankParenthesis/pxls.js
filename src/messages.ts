@@ -12,6 +12,8 @@ export class Message {
 	}
 }
 
+// TODO: for all message types, verify that `type` has the correct value
+
 export interface Pixel {
 	x: number;
 	y: number;

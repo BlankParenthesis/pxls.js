@@ -217,7 +217,80 @@ export class Pxls extends EventEmitter {
 		}
 	}
 
-	// TODO: make this nicer — it's too big
+	private async processWSMessage(message: Message) {
+		switch(message.type) {
+		case "pixel":
+			if(!PixelsMessage.validate(message)) {
+				this.emit("error", new ValidationError(message, "PixelMessage"));
+				return;
+			}
+
+			for(const pixel of message.pixels) {
+				if(pixel.color === -1) {
+					// I'm not sure when this is -1 and when it's 255.
+					// The current pxls client indicates both as transparent.
+					// On brief inspection, I couldn't find where the server sends -1.
+					// I *know* it sends it sometimes but 🤷
+					pixel.color = TRANSPARENT_PIXEL;
+				}
+
+				if(this.synced) {
+					this.processPixel(pixel);
+				} else {
+					this.pixelBuffer.push(pixel);
+				}
+			}
+			break;
+		case "users":
+			if(!UsersMessage.validate(message)) {
+				this.emit("error", new ValidationError(message, "UsersMessage"));
+				return;
+			}
+
+			this.userCount = message.count;
+			
+			this.emit("users", message.count);
+			break;
+		case "alert":
+			if(!AlertMessage.validate(message)) {
+				this.emit("error", new ValidationError(message, "AlertMessage"));
+				return;
+			}
+
+			this.emit("alert", message);
+			break;
+		case "notification":
+			if(!NotificationMessage.validate(message)) {
+				this.emit("error", new ValidationError(message, "NotificationMessage"));
+				return;
+			}
+
+			if(this.synced) {
+				this.notifications.push(message.notification);
+				this.emit("notification", message.notification);
+			} else {
+				this.notificationBuffer.push(message.notification);
+			}
+
+			break;
+		case "chat_message":
+			if(!ChatMessageMessage.validate(message)) {
+				this.emit("error", new ValidationError(message, "ChatMessageMessage"));
+				return;
+			}
+
+			// NOTE: I'm not storing a buffer chat messages here.
+			// While that could be handy, pxls' official instance seems
+			// mostly against third-parties collecting that sort of data.
+
+			// You are encouraged not to store this long-term if running
+			// against the official instance.
+			this.emit("chatmessage", message.message);
+				
+			break;
+		}
+	}
+
 	private async connectWS(): Promise<void> {
 		if(typeof this.wsVariable !== "undefined") {
 			if(![WebSocket.CLOSING, WebSocket.CLOSED].includes(this.wsVariable.readyState as any)) {
@@ -253,83 +326,18 @@ export class Pxls extends EventEmitter {
 				}, HEARTBEAT_TIMEOUT);
 
 				ws.on("message", data => {
-					const message: unknown = JSON.parse(data.toString());
-
-					if(!Message.validate(message)) {
-						this.emit("error", new ValidationError(message, "Message"));
-						return;
-					}
-					
-					switch(message.type) {
-					case "pixel":
-						if(!PixelsMessage.validate(message)) {
-							this.emit("error", new ValidationError(message, "PixelMessage"));
-							return;
-						}
-
-						for(const pixel of message.pixels) {
-							if(pixel.color === -1) {
-								// I'm not sure when this is -1 and when it's 255.
-								// The current pxls client indicates both as transparent.
-								// On brief inspection, I couldn't find where the server sends -1.
-								// I *know* it sends it sometimes but 🤷
-								pixel.color = TRANSPARENT_PIXEL;
-							}
-
-							if(this.synced) {
-								this.processPixel(pixel);
-							} else {
-								this.pixelBuffer.push(pixel);
-							}
-						}
-						break;
-					case "users":
-						if(!UsersMessage.validate(message)) {
-							this.emit("error", new ValidationError(message, "UsersMessage"));
-							return;
-						}
-
-						this.userCount = message.count;
+					try {
+						const message: unknown = JSON.parse(data.toString());
 						
-						this.emit("users", message.count);
-						break;
-					case "alert":
-						if(!AlertMessage.validate(message)) {
-							this.emit("error", new ValidationError(message, "AlertMessage"));
+						if(!Message.validate(message)) {
+							this.emit("error", new ValidationError(message, "Message"));
 							return;
 						}
-
-						this.emit("alert", message);
-						break;
-					case "notification":
-						if(!NotificationMessage.validate(message)) {
-							this.emit("error", new ValidationError(message, "NotificationMessage"));
-							return;
-						}
-
-						if(this.synced) {
-							this.notifications.push(message.notification);
-							this.emit("notification", message.notification);
-						} else {
-							this.notificationBuffer.push(message.notification);
-						}
-
-						break;
-					case "chat_message":
-						if(!ChatMessageMessage.validate(message)) {
-							this.emit("error", new ValidationError(message, "ChatMessageMessage"));
-							return;
-						}
-
-						// NOTE: I'm not storing a buffer chat messages here.
-						// While that could be handy, pxls' official instance seems
-						// mostly against third-parties collecting that sort of data.
-
-						// You are encouraged not to store this long-term if running
-						// against the official instance.
-						this.emit("chatmessage", message.message);
-							
-						break;
+						
+						this.processWSMessage(message);
+					} catch(e) {
+						this.emit("error", e);
+						ws.close();
 					}
 				});
 				ws.once("error", e => {
