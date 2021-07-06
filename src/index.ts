@@ -25,7 +25,7 @@ import {
 	Emoji,
 	Metadata,
 	Metadatalike,
-} from "./metadata";	 
+} from "./metadata";
 
 import { hasProperty, pipe, ValidationError, range, sum, wait, doWithTimeout } from "./util";
 
@@ -359,7 +359,7 @@ export class Pxls extends EventEmitter {
 	}
 
 	// FIXME: calling this multiple times before the first one resolves results
-	// in only once call ever resolving
+	// in only onc call ever resolving
 	async disconnect() {
 		this.synced = false;
 		this.disconnected = true;
@@ -487,13 +487,15 @@ export class Pxls extends EventEmitter {
 	}
 
 	async saveCanvas(file: string) {
-		await this.saveBufferColor(file, this.rgba);
+		const rgba = Pxls.convertBufferToRGBA(this.canvas, this.palette);
+
+		await this.saveBufferColor(file, rgba);
 	}
 
 	async saveInitialCanvas(file: string) {
-		const rgbaBuffer = Pxls.convertBufferToRGBA(this.initialcanvas, this.palette);
+		const rgba = Pxls.convertBufferToRGBA(this.initialcanvas, this.palette);
 
-		await this.saveBufferColor(file, rgbaBuffer);
+		await this.saveBufferColor(file, rgba);
 	}
 
 	private async saveBufferBW(file: string, buffer: Uint8Array) {
@@ -529,6 +531,8 @@ export class Pxls extends EventEmitter {
 		}
 		return this.userCount;
 	}
+	
+	// TODO: user count can be fetched from /users on demand
 
 	private get metadata() {
 		if(is.undefined(this.metadataVariable)) {
@@ -680,6 +684,9 @@ export class Pxls extends EventEmitter {
 		return rgba;
 	}
 
+	/**
+	 * @deprecated use convertBufferToRGBA
+	 */
 	get rgba() {
 		return Pxls.convertBufferToRGBA(this.canvas, this.palette);
 	}
