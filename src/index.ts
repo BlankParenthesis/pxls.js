@@ -661,15 +661,15 @@ export class Pxls extends EventEmitter {
 	}
 
 	cropHeatmap(x: number, y: number, width: number, height: number) {
-		return Pxls.cropBuffer(this.heatmap, this.width, this.height, x, y, width, height);
+		return Pxls.cropBuffer(this.heatmap, this.width, this.height, x, y, width, height, 0);
 	}
 
 	cropPlacemap(x: number, y: number, width: number, height: number) {
-		return Pxls.cropBuffer(this.placemap, this.width, this.height, x, y, width, height);
+		return Pxls.cropBuffer(this.placemap, this.width, this.height, x, y, width, height, 1);
 	}
 
 	cropVirginmap(x: number, y: number, width: number, height: number) {
-		return Pxls.cropBuffer(this.virginmap, this.width, this.height, x, y, width, height);
+		return Pxls.cropBuffer(this.virginmap, this.width, this.height, x, y, width, height, 1);
 	}
 	
 	cropInitialCanvas(x: number, y: number, width: number, height: number) {
