@@ -19,11 +19,26 @@ import {
 } from "./messages";
 
 import {
-	PxlsColor,
 	Emoji,
 	Metadata,
 	Metadatalike,
 } from "./metadata";
+
+import {
+	TemplateKey,
+	TemplateDesign,
+	StylizedTemplateDesign,
+	Template,
+} from "./template";
+
+import {
+	Buffer2D,
+	IndexMethod,
+	IndexArray,
+	PxlsColor,
+	TRANSPARENT_PIXEL,
+	PLACEMAP_NOPLACE,
+} from "./buffers";
 
 import { hasProperty, pipe, ValidationError, range, sum, wait, doWithTimeout } from "./util";
 
@@ -40,16 +55,24 @@ export {
 	PxlsColor,
 	Emoji,
 	Metadata,
+	TemplateKey,
+	IndexMethod,
+	IndexArray,
+	TemplateDesign,
+	StylizedTemplateDesign,
+	Template,
+	TRANSPARENT_PIXEL,
+	PLACEMAP_NOPLACE,
+	Buffer2D,
 };
-
-export const TRANSPARENT_PIXEL = 255;
 
 export interface SyncData {
 	metadata: Metadata;
-	canvas?: Uint8Array;
-	heatmap?: Uint8Array;
-	placemap?: Uint8Array;
-	virginmap?: Uint8Array;
+	canvas?: Buffer2D<IndexArray>;
+	heatmap?: Buffer2D<Uint8Array>;
+	placemap?: Buffer2D<Uint8Array>;
+	virginmap?: Buffer2D<Uint8Array>;
+	initialcanvas?: Buffer2D<IndexArray>;
 }
 
 export interface Pxls {
@@ -119,16 +142,16 @@ export class Pxls extends EventEmitter {
 	private readonly pixelBuffer: Pixel[] = [];
 	private wsVariable?: WebSocket;
 
-	// TODO: think of a better suffix for `get` proxied data — Variable is not great
+	// TODO: think of a better suffix for `get`-proxied data — Variable is not great
 	private metadataVariable?: Metadata;
 	private userCount?: number;
 
 	private readonly bufferRestriction: Set<BufferType>;
-	private canvasdata?: Uint8Array;
-	private heatmapdata?: Uint8Array;
-	private placemapdata?: Uint8Array;
-	private virginmapdata?: Uint8Array;
-	private initialcanvasdata?: Uint8Array;
+	private canvasdata?: Buffer2D<IndexArray>;
+	private heatmapdata?: Buffer2D<Uint8Array>;
+	private placemapdata?: Buffer2D<Uint8Array>;
+	private virginmapdata?: Buffer2D<Uint8Array>;
+	private initialcanvasdata?: Buffer2D<IndexArray>;
 
 	readonly notifications: Notification[] = [];
 	private readonly notificationBuffer: Notification[] = [];
@@ -197,23 +220,21 @@ export class Pxls extends EventEmitter {
 			return;
 		}
 		
-		const address = this.address(pixel.x, pixel.y);
-
 		if(this.bufferRestriction.has(BufferType.HEATMAP)) {
-			this.heatmap[address] = 255;
+			this.heatmap.put(pixel.x, pixel.y, 255);
 		}
 
 		if(this.bufferRestriction.has(BufferType.VIRGINMAP)) {
-			this.virginmap[address] = 0;
+			this.virginmap.put(pixel.x, pixel.y, 0);
 		}
 
 		if(this.bufferRestriction.has(BufferType.CANVAS)) {
 			this.emit("pixel", {
 				...pixel,
-				"oldColor": this.canvas[address],
+				"oldColor": this.canvas.get(pixel.x, pixel.y) as number,
 			});
 
-			this.canvas[address] = pixel.color;
+			this.canvas.put(pixel.x, pixel.y, pixel.color);
 		}
 	}
 
@@ -391,13 +412,17 @@ export class Pxls extends EventEmitter {
 
 		this.heatmapCooldownInterval = setInterval(() => {
 			if(this.bufferRestriction.has(BufferType.HEATMAP)) {
-				this.heatmapdata = this.heatmap.map(b => {
-					if(b > 0) {
-						return b - 1;
-					} else {
-						return b;
-					}
-				});
+				this.heatmapdata = new Buffer2D(
+					this.heatmap.width, 
+					this.heatmap.height, 
+					this.heatmap.data.map(b => {
+						if(b > 0) {
+							return b - 1;
+						} else {
+							return b;
+						}
+					}),
+				);
 			}
 		}, this.heatmapCooldown * 1000 / 256);
 	}
@@ -428,21 +453,23 @@ export class Pxls extends EventEmitter {
 		const bufferSources = [...this.bufferSources.entries()]
 			.filter(([type, _]) => this.bufferRestriction.has(type));
 
+		const { width, height } = metadata;
+
 		const buffers = await Promise.all(
-			bufferSources.map(async ([type, url]): Promise<[string, Uint8Array]> => {
-				const buffer = await pipe((await fetch(url)).body, new Uint8Array(this.width * this.height));
+			bufferSources.map(async ([type, url]): Promise<[string, Buffer2D<Uint8Array>]> => {
+				const buffer = await pipe((await fetch(url)).body, new Uint8Array(width * height));
 
 				switch(type) {
 				case BufferType.CANVAS:
-					return ["canvas", this.canvasdata = buffer];
+					return ["canvas", this.canvasdata = new Buffer2D(width, height, new IndexArray(buffer))];
 				case BufferType.HEATMAP:
-					return ["canvas", this.heatmapdata = buffer];
+					return ["heatmap", this.heatmapdata = new Buffer2D(width, height, buffer)];
 				case BufferType.PLACEMAP:
-					return ["canvas", this.placemapdata = buffer];
+					return ["placemap", this.placemapdata = new Buffer2D(width, height, buffer)];
 				case BufferType.VIRGINMAP:
-					return ["canvas", this.virginmapdata = buffer];
+					return ["virginmap", this.virginmapdata = new Buffer2D(width, height, buffer)];
 				case BufferType.INITIAL_CANVAS:
-					return ["canvas", this.initialcanvasdata = buffer];
+					return ["initialcanvas", this.initialcanvasdata = new Buffer2D(width, height, new IndexArray(buffer))];
 				default:
 					throw new Error("Unknown buffer type used internally");
 				}
@@ -474,51 +501,46 @@ export class Pxls extends EventEmitter {
 		await this.saveCanvas(file);
 	}
 
-	private async saveBufferColor(file: string, buffer: Uint8Array) {
-		const { width, height } = this;
-
-		await sharp(buffer as Buffer, { "raw": { 
-			width, 
-			height, 
+	private static async saveIndexedArrayColor(file: string, buffer: Buffer2D<IndexArray>, palette: PxlsColor[]) {
+		await sharp(Buffer.from(buffer.data.deindex(palette)), { "raw": { 
+			"width": buffer.width, 
+			"height": buffer.height, 
 			"channels": 4,
 		} }).toFile(file);
 	}
 
 	async saveCanvas(file: string) {
-		const rgba = Pxls.convertBufferToRGBA(this.canvas, this.palette);
-
-		await this.saveBufferColor(file, rgba);
+		await Pxls.saveIndexedArrayColor(file, this.canvas, this.palette);
 	}
 
 	async saveInitialCanvas(file: string) {
-		const rgba = Pxls.convertBufferToRGBA(this.initialcanvas, this.palette);
-
-		await this.saveBufferColor(file, rgba);
+		await Pxls.saveIndexedArrayColor(file, this.initialcanvas, this.palette);
 	}
 
-	private async saveBufferBW(file: string, buffer: Uint8Array) {
-		const { width, height } = this;
-
-		await sharp(buffer as Buffer, { "raw": {
-			width, 
-			height, 
+	private static async saveBufferBW(file: string, buffer: Buffer2D<Uint8Array>) {
+		await sharp(Buffer.from(buffer.data), { "raw": {
+			"width": buffer.width, 
+			"height": buffer.height, 
 			"channels": 1,
 		} }).toColorspace("b-w")
 			.toFile(file);
 	}
 
 	async saveHeatmap(file: string) {
-		await this.saveBufferBW(file, this.heatmap);
+		await Pxls.saveBufferBW(file, this.heatmap);
 	}
 
 	async savePlacemap(file: string) {
-		await this.saveBufferBW(file, this.placemap);
+		await Pxls.saveBufferBW(file, this.placemap);
 	}
 
 	async saveVirginmap(file: string) {
-		await this.saveBufferBW(file, this.virginmap);
+		await Pxls.saveBufferBW(file, this.virginmap);
 	}
 
+	/**
+	 * @deprecated use `Buffer2D.address` instead
+	 */
 	address(x: number, y: number) {
 		return (y * this.width) + x;
 	}
@@ -615,6 +637,9 @@ export class Pxls extends EventEmitter {
 		return this.initialcanvasdata;
 	}
 
+	/**
+	 * @deprecated use `Buffer2D.crop` instead
+	 */
 	static cropBuffer(
 		buffer: Uint8Array, 
 		bufferWidth: number, 
@@ -625,84 +650,64 @@ export class Pxls extends EventEmitter {
 		height: number, 
 		blankFill: number = TRANSPARENT_PIXEL,
 	) {
-		if(buffer.length !== bufferWidth * bufferHeight) {
-			throw new Error("Invalid buffer size specified");
-		}
-
-		// use only negative offsets (and make them positive)
-		const putOffsetX = Math.max(-x, 0);
-		const putOffsetY = Math.max(-y, 0);
-		
-		// use only positive offsets
-		const takeOffsetX = Math.max(x, 0);
-		const takeOffsetY = Math.max(y, 0);
-
-		const availableWidth = bufferWidth - takeOffsetX;
-		const availableHeight = bufferHeight - takeOffsetY;
-
-		const croppedDataWidth = Math.min(width - putOffsetX, availableWidth);
-		const croppedDataHeight = Math.min(height - putOffsetY, availableHeight);
-
-		const croppedBuffer = new Uint8Array(width * height);
-		croppedBuffer.fill(blankFill);
-
-		for(let y = 0; y < croppedDataHeight; y++) {
-			const takeLocation = (y + takeOffsetY) * bufferWidth + takeOffsetX;
-			const putLocation = (y + putOffsetY) * width + putOffsetX;
-			const row = buffer.subarray(takeLocation, takeLocation + croppedDataWidth);
-			croppedBuffer.set(row, putLocation);
-		}
-
-		return croppedBuffer;
+		return new Buffer2D(bufferWidth, bufferHeight, buffer)
+			.crop(x, y, width, height, blankFill);
 	}
 
+	/**
+	 * @deprecated use `pxls.canvas.crop` instead
+	 */
 	cropCanvas(x: number, y: number, width: number, height: number) {
-		return Pxls.cropBuffer(this.canvas, this.width, this.height, x, y, width, height);
+		return this.canvas.crop(x, y, width, height);
 	}
 
+	/**
+	 * @deprecated use `pxls.heatmap.crop` instead
+	 */
 	cropHeatmap(x: number, y: number, width: number, height: number) {
-		return Pxls.cropBuffer(this.heatmap, this.width, this.height, x, y, width, height, 0);
+		return this.heatmap.crop(x, y, width, height, 0);
 	}
 
+	/**
+	 * @deprecated use `pxls.placemap.crop` instead
+	 */
 	cropPlacemap(x: number, y: number, width: number, height: number) {
-		return Pxls.cropBuffer(this.placemap, this.width, this.height, x, y, width, height, 1);
+		return this.placemap.crop(x, y, width, height, 1);
 	}
 
+	/**
+	 * @deprecated use `pxls.virginmap.crop` instead
+	 */
 	cropVirginmap(x: number, y: number, width: number, height: number) {
-		return Pxls.cropBuffer(this.virginmap, this.width, this.height, x, y, width, height, 1);
+		return this.virginmap.crop(x, y, width, height, 1);
 	}
 	
+	/**
+	 * @deprecated use `pxls.initialcanvas.crop` instead
+	 */
 	cropInitialCanvas(x: number, y: number, width: number, height: number) {
-		return Pxls.cropBuffer(this.initialcanvas, this.width, this.height, x, y, width, height);
+		return this.initialcanvas.crop(x, y, width, height);
 	}
 
 	/**
-	 * @deprecated use `cropCanvas` instead
+	 * @deprecated use `pxls.canvas.crop` instead
 	 */
 	getCroppedCanvas(x: number, y: number, width: number, height: number) {
-		return this.cropCanvas(x, y, width, height);
-	}
-
-	static convertBufferToRGBA(buffer: Uint8Array, palette: PxlsColor[]) {
-		const rgba = new Uint8Array(buffer.length << 2);
-
-		rgba.fill(255);
-
-		for(let i = 0; i < buffer.length; i++) {
-			if(buffer[i] === TRANSPARENT_PIXEL) {
-				rgba[(i << 2) + 3] = 0;
-			} else {
-				rgba.set(palette[buffer[i]].values, i << 2);
-			}
-		}
-		return rgba;
+		return this.canvas.crop(x, y, width, height);
 	}
 
 	/**
-	 * @deprecated use convertBufferToRGBA
+	 * @deprecated use `IndexArray.deindex` instead
+	 */
+	static convertBufferToRGBA(buffer: Uint8Array, palette: PxlsColor[]) {
+		return IndexArray.prototype.deindex.call(buffer, palette);
+	}
+
+	/**
+	 * @deprecated use `pxls.canvas.data.deindex(pxls.palette)` instead
 	 */
 	get rgba() {
-		return Pxls.convertBufferToRGBA(this.canvas, this.palette);
+		return this.canvas.data.deindex(this.palette);
 	}
 
 	static cooldownForUserCount(

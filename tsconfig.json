@@ -8,7 +8,8 @@
 		"preserveConstEnums": true,
 		"allowJs": false,
 		"strict": true,
-		"removeComments": true,
+		// preserve jsdoc in type declarations:
+		"removeComments": false,
 		"outDir": "./lib",
 		"declaration": true,
 		"declarationDir": "./types"

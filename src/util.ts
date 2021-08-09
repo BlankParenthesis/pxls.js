@@ -1,5 +1,6 @@
 import { inspect } from "util";
 import * as is from "check-types";
+import { instance } from "check-types";
 
 export const hasProperty = function <
 	X extends {}, 

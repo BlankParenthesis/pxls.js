@@ -1,30 +1,9 @@
 import { URL } from "url";
 
-import color = require("color-parse");
 import * as is from "check-types";
 
+import { PxlsColor, PxlsColorlike } from "./buffers";
 import { hasTypedProperty } from "./util";
-
-export interface PxlsColorlike {
-	name: string;
-	value: string;
-}
-
-export class PxlsColor {
-	readonly name: string;
-	readonly values: [number, number, number];
-
-	constructor(object: PxlsColorlike) {
-		this.name = object.name;
-		this.values = color(`#${object.value}`).values;
-	}
-
-	static validate<C extends PxlsColorlike>(color: unknown): color is C {
-		return is.object(color)
-			&& hasTypedProperty(color, "name", is.string)
-			&& hasTypedProperty(color, "value", is.string);
-	}
-}
 
 export interface Emojilike {
 	name: string;
