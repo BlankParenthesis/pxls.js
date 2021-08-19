@@ -193,22 +193,20 @@ export class Pxls extends EventEmitter {
 	}
 
 	async connect() {
-		this.synced = false;
-
 		// this variable represents the desired state more than the current state.
 		this.disconnected = false;
 
 		while(!this.synced && !this.disconnected) {
-			await this.disconnect();
+			await this.disposeWebsocket();
 
 			try {
 				await this.connectWS();
 				await this.sync();
+				this.emit("ready");
 			} catch(e) {
 				await wait(30000);
 			}
 		}
-		this.emit("ready");
 	}
 
 	private processPixel(pixel: Pixel) {
@@ -377,12 +375,7 @@ export class Pxls extends EventEmitter {
 		});
 	}
 
-	// FIXME: calling this multiple times before the first one resolves results
-	// in only onc call ever resolving
-	async disconnect() {
-		this.synced = false;
-		this.disconnected = true;
-
+	private async disposeWebsocket() {
 		if(!is.undefined(this.wsVariable)) {
 			this.ws.removeAllListeners("error");
 			this.ws.removeAllListeners("close");
@@ -399,6 +392,17 @@ export class Pxls extends EventEmitter {
 			}
 
 			this.wsVariable = undefined;
+		}
+	}
+
+	// FIXME: calling this multiple times before the first one resolves results
+	// in only one call ever resolving
+	async disconnect() {
+		this.synced = false;
+		this.disconnected = true;
+
+		if(!is.undefined(this.wsVariable)) {
+			await this.disposeWebsocket();
 			this.emit("disconnect");
 		}
 	}
