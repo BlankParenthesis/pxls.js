@@ -364,6 +364,10 @@ export class Pxls extends EventEmitter {
 					ws.close();
 				});
 				ws.once("close", () => {
+					if(this.wsHeartbeat !== undefined) {
+						clearInterval(this.wsHeartbeat);
+						this.wsHeartbeat = undefined;
+					}
 					this.emit("disconnect");
 					this.connect();
 				});
