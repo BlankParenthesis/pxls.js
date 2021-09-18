@@ -355,7 +355,7 @@ export class Pxls extends EventEmitter {
 						
 						this.processWSMessage(message);
 					} catch(e) {
-						this.emit("error", e);
+						this.emit("error", e as Error);
 						ws.close();
 					}
 				});
@@ -389,7 +389,13 @@ export class Pxls extends EventEmitter {
 				clearInterval(this.wsHeartbeat);
 			}
 
-			if(this.ws.readyState !== WebSocket.CLOSED) {
+			if(this.ws.readyState === WebSocket.CONNECTING) {
+				await new Promise(resolve => {
+					this.ws.once("open", resolve);
+				});
+			}
+
+			if(this.ws.readyState === WebSocket.OPEN) {
 				await new Promise(resolve => {
 					this.ws.once("close", resolve);
 					this.ws.close();
